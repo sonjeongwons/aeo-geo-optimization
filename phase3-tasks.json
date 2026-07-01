@@ -1,0 +1,398 @@
+[
+  {
+    "id": "T01",
+    "title": "Scaffold src/deploy module + env config additions",
+    "files": [
+      "src/deploy/index.ts",
+      "src/config/env.ts"
+    ],
+    "dependsOn": [],
+    "parallelGroup": 1,
+    "description": "Create the src/deploy/ directory with an index.ts barrel. Add Phase 3 env vars to env.ts: OWNED_NET_OUT_DIR (default ./.owned-net-out), OWNED_NET_HUB_BASE_URL (string, no default — must be set for real publish), DEPLOY_DRY_RUN (coerced boolean, default true), DEPLOY_LEASE_TIMEOUT_MS (default 300000), DEPLOY_DEFAULT_MAX_PER_DAY (default 0 = fail-closed unless an explicit policy enables), CUSTOMER_DOMAIN_BLOCKLIST (comma-split string array, default empty). Keep additions purely additive (no changes to existing keys).",
+    "acceptanceCriteria": [
+      "env.ts parses the new vars with the existing zod schema and DEPLOY_DRY_RUN defaults to true",
+      "OWNED_NET_HUB_BASE_URL absent does not crash boot (only blocks real owned_net publish)",
+      "tsc passes; no existing env consumer breaks"
+    ]
+  },
+  {
+    "id": "T02",
+    "title": "Migration 0010 — url_registry, channel_throttle, channel_throttle_state, ALTER content_deploy_queue",
+    "files": [
+      "src/db/migrations/0010_phase3_deploy.sql"
+    ],
+    "dependsOn": [],
+    "parallelGroup": 1,
+    "description": "Write the single transactional .sql migration exactly as specified in newMigrations: url_registry (PLAIN, partial-unique uq_url_registry_live, 3 indexes, channel_class single-table CHECK excluding community/review), channel_throttle (PLAIN config + conservative seed via ON CONFLICT DO NOTHING), channel_throttle_state (PLAIN counter, uq_throttle_state on COALESCE(customer_id, zero-uuid), channel_class), and ALTER content_deploy_queue (DROP+re-ADD status CHECK widened to queued/leased/published/failed/unpublished, ADD leased_at/attempts/approved_by/approved_at). All idempotent. No hypertable/CAGG/policy DDL.",
+    "acceptanceCriteria": [
+      "Migration applies cleanly on a fresh DB AND on a DB already at 0009 (idempotent re-run is a no-op)",
+      "content_deploy_queue accepts status='leased' after migration; status='bogus' is rejected",
+      "uq_url_registry_live is a PARTIAL unique index (WHERE publish_status IN ('publishing','published'))",
+      "every CHECK is single-table; no .cjs file is created",
+      "gateStatus-queue and queueForDeploy tests still pass (no test pinned the old CHECK)"
+    ]
+  },
+  {
+    "id": "T03",
+    "title": "Extend schema.ts with Phase 3 tables + widen ContentDeployQueueTable",
+    "files": [
+      "src/db/schema.ts"
+    ],
+    "dependsOn": [
+      "T02"
+    ],
+    "parallelGroup": 2,
+    "description": "Add Kysely interfaces UrlRegistryTable, ChannelThrottleTable, ChannelThrottleStateTable matching the 0010 columns, register them in the Database interface, and export Selectable/Insertable/Updateable type aliases (mirroring existing patterns). Widen ContentDeployQueueTable to add leased_at, attempts, approved_by, approved_at (keep status as string). Update the doc comment noting status is no longer 'queued'-only.",
+    "acceptanceCriteria": [
+      "Database interface includes url_registry, channel_throttle, channel_throttle_state",
+      "ContentDeployQueueTable has the 4 new columns",
+      "NewUrlRegistry/UrlRegistryRow (and the other two tables') type aliases exported",
+      "tsc passes against existing repo.ts usages of ContentDeployQueueTable"
+    ]
+  },
+  {
+    "id": "T04",
+    "title": "ChannelConnector interface + PublishResult union + ChannelClass",
+    "files": [
+      "src/deploy/connector.ts"
+    ],
+    "dependsOn": [
+      "T01"
+    ],
+    "parallelGroup": 2,
+    "description": "Define the ONE seam exactly as in connectorAbstraction: re-export NOT_CONFIGURED from providers/types.js, define ChannelClass (the 6-value content_asset enum), ChannelCapability, PublishRequest, the PublishResult discriminated union (PublishOk/PublishDryRun/PublishNotConfigured/PublishThrottled/PublishError), ChannelConnector interface (publish + optional unpublish/confirmIndexing), and ChannelReadiness. Reuse ContentBody/JsonLd types from src/content/types.js. Pure types, no IO.",
+    "acceptanceCriteria": [
+      "ChannelClass values exactly equal the content_asset channel_class CHECK set (no community/review)",
+      "NOT_CONFIGURED is the same typed value re-exported from providers (not a new literal)",
+      "PublishResult is a discriminated union on ok/code/dryRun",
+      "tsc passes"
+    ]
+  },
+  {
+    "id": "T05",
+    "title": "Repo functions — claim/lease, approval, url_registry claim+publish, throttle counter, monitoring read",
+    "files": [
+      "src/db/repo.ts"
+    ],
+    "dependsOn": [
+      "T03"
+    ],
+    "parallelGroup": 3,
+    "description": "Add: reapStaleLeases(timeoutMs); claimNextDeployBatch(channelClass, limit) doing the atomic JOIN-to-content_asset + throttle-check + counter-increment + SKIP LOCKED lease in ONE transaction (returns rows incl. asset metadata + customer_id); approveDeployRow(assetId, approverIdentity); markDeployStatus(queueId, status); claimUrlRegistry(...) inserting publish_status='publishing' with ON CONFLICT DO NOTHING returning whether THIS caller won; markUrlRegistryPublished(...) UPDATE to 'published'; insertUrlRegistryDryRun(...); updateIndexingStatus(...); listPublishedUrlsForMonitoring(customerId?, since?) read-only. Throttle helpers: read/increment channel_throttle_state with FOR UPDATE. All use the existing db() and Kysely patterns.",
+    "acceptanceCriteria": [
+      "claimUrlRegistry returns claimed=false on a second call for the same (asset_id, channel_class) live row (ON CONFLICT DO NOTHING)",
+      "claimNextDeployBatch only returns rows with approved_by NOT NULL and status='queued', and respects remaining throttle budget",
+      "claimNextDeployBatch increments the throttle counter in the same transaction as the lease",
+      "listPublishedUrlsForMonitoring performs NO writes",
+      "unique-violation paths surface as catchable, not unhandled throws"
+    ]
+  },
+  {
+    "id": "T06",
+    "title": "Generic StubConnector + ChannelRegistry with deny-default + readiness",
+    "files": [
+      "src/deploy/connectors/stub.ts",
+      "src/deploy/registry.ts"
+    ],
+    "dependsOn": [
+      "T04"
+    ],
+    "parallelGroup": 3,
+    "description": "Implement makeStubConnector(channelClass) returning status:'stub', publish()→{ok:false,code:NOT_CONFIGURED} (mirror providers/stub.ts). Implement ChannelRegistry: register(connector); get(channelClass) returns the connector or a default DENY StubConnector for unknown channels; readiness():ChannelReadiness[]; getChannelReadiness() report. buildConnectorRegistry(env) wires connectors (ownedNet real, others stub) — leave ownedNet import as a forward reference satisfied by T07.",
+    "acceptanceCriteria": [
+      "registry.get('community') returns a deny StubConnector (cannot publish)",
+      "readiness() reports owned_net='ready' and all externals 'stub'/'not_configured'",
+      "registry key set is a SUBSET of ChannelClass"
+    ]
+  },
+  {
+    "id": "T07",
+    "title": "OwnedNetConnector + OwnedNetTarget(FsTarget) + deferred-url resolver + §0 host guard",
+    "files": [
+      "src/deploy/connectors/ownedNet.ts",
+      "src/deploy/connectors/render.ts"
+    ],
+    "dependsOn": [
+      "T04"
+    ],
+    "parallelGroup": 3,
+    "description": "render.ts: pure deterministic HTML + JSON-LD renderers per ContentBody content_type, embedding disclosure_tag. ownedNet.ts: OwnedNetTarget interface {writePage,writeSitemap,deletePage,baseUrl}; FsTarget writing to OWNED_NET_OUT_DIR; the connector resolves the deferred token (role='owned_hub' only) against OWNED_NET_HUB_BASE_URL, derives slug from asset industry/language/phrasing_group_id, stamps datePublished, applies the fail-closed CUSTOMER_DOMAIN_BLOCKLIST host guard, writes the page+sitemap, returns PublishOk{reversible:true}. Implement unpublish (file delete) + confirmIndexing returning indexed:false (local file not crawlable). Honor dryRun (compute plannedUrl, write nothing).",
+    "acceptanceCriteria": [
+      "publish() never accepts a free-form URL; only resolves the deferred token against config",
+      "a resolved host matching CUSTOMER_DOMAIN_BLOCKLIST throws/returns PublishError before any write (fail-closed)",
+      "dryRun:true writes no file and returns PublishDryRun with plannedUrl",
+      "re-render of the same asset is byte-identical (overwrite-safe)",
+      "confirmIndexing returns indexed:false for the FsTarget"
+    ]
+  },
+  {
+    "id": "T08",
+    "title": "External channel stub connectors (prWire, directory, web2, social, entity)",
+    "files": [
+      "src/deploy/connectors/prWire.ts",
+      "src/deploy/connectors/directory.ts",
+      "src/deploy/connectors/web2.ts",
+      "src/deploy/connectors/social.ts",
+      "src/deploy/connectors/entity.ts"
+    ],
+    "dependsOn": [
+      "T04"
+    ],
+    "parallelGroup": 3,
+    "description": "One file per channel, each a ChannelConnector status:'stub' returning NOT_CONFIGURED, with correct capabilities + reversible + requiresHumanSubmit flags per externalChannels (prWire reversible:false; directory/entity requiresHumanSubmit:true; entity capabilities []; web2 reversible:true). NO community/review file. Document automation grade in each header.",
+    "acceptanceCriteria": [
+      "every external connector returns {ok:false,code:NOT_CONFIGURED} from publish()",
+      "entity connector has no 'publish' capability",
+      "no communityConnector/reviewConnector file exists"
+    ]
+  },
+  {
+    "id": "T09",
+    "title": "Naturalness throttle decision module (§7#5)",
+    "files": [
+      "src/deploy/throttle.ts"
+    ],
+    "dependsOn": [
+      "T05"
+    ],
+    "parallelGroup": 4,
+    "description": "Implement canPublishNow(policy, state, now) pure decision returning {allowed:true} | {allowed:false, retryAfterMs, reason}, enforcing max_per_day, max_per_week, min_interval_minutes. Fail-closed: missing/disabled policy → allowed:false. Provide loadThrottlePolicy(channelClass) and the remaining-budget computation used by claimNextDeployBatch. Dry-run path documented as non-consuming. The actual atomic counter increment lives in repo (T05); throttle.ts is the pure policy logic + glue.",
+    "acceptanceCriteria": [
+      "missing policy → allowed:false (fail-closed)",
+      "over daily cap → allowed:false with retryAfterMs",
+      "within min_interval since last_publish_at → allowed:false",
+      "pure function unit-tested without DB"
+    ]
+  },
+  {
+    "id": "T10",
+    "title": "Eligibility + disclosure gates (pure)",
+    "files": [
+      "src/deploy/eligibility.ts",
+      "src/deploy/disclosureGate.ts"
+    ],
+    "dependsOn": [
+      "T04"
+    ],
+    "parallelGroup": 4,
+    "description": "eligibility.ts: isPublishEligible({gateStatus, approvedBy, queueStatus}) pure predicate — true iff gateStatus==='passed' AND approvedBy!=null AND queueStatus==='leased'. disclosureGate.ts: requiresDisclosure(channelClass) (true for pr_wire/directory/web2/social, false for owned_net) and assertDisclosure(channelClass, disclosureTag) that BLOCKS (returns false / typed reason) when a required channel has a null/empty tag.",
+    "acceptanceCriteria": [
+      "isPublishEligible returns false if any of the three conditions fails",
+      "assertDisclosure blocks external channel + null tag, allows owned_net + null tag",
+      "both are pure, no IO"
+    ]
+  },
+  {
+    "id": "T11",
+    "title": "Job names, payloads, DLQs + queue registration",
+    "files": [
+      "src/scheduler/jobs.ts",
+      "src/scheduler/queue.ts"
+    ],
+    "dependsOn": [
+      "T01"
+    ],
+    "parallelGroup": 2,
+    "description": "jobs.ts: add JOB_NAMES.PUBLISH_DISPATCH/PUBLISH_UNIT/PUBLISH_VERIFY, DLQ_PUBLISH_UNIT/DLQ_PUBLISH_VERIFY, and zod payload schemas (PublishDispatchPayload{channelClass?,dryRun}, PublishUnitPayload{queueId,assetId,channelClass,dryRun}, PublishVerifyPayload{urlRegistryId}). queue.ts: add the 3 queues + 2 DLQs to the createQueue list in start().",
+    "acceptanceCriteria": [
+      "all 5 new queue names are created on boot (idempotent)",
+      "payload zod schemas validate the documented shapes",
+      "existing cycle.* queues unaffected"
+    ]
+  },
+  {
+    "id": "T12",
+    "title": "publish.unit handler (claim-before-publish, dry-run, idempotent)",
+    "files": [
+      "src/deploy/publishUnit.ts"
+    ],
+    "dependsOn": [
+      "T05",
+      "T06",
+      "T07",
+      "T08",
+      "T10",
+      "T11"
+    ],
+    "parallelGroup": 5,
+    "description": "Implement the publish.unit core: zod-validate payload; load asset+queue row (JOIN); re-check isPublishEligible (fail-closed); run disclosure gate; resolve connector via registry; CLAIM url_registry 'publishing' (claimUrlRegistry) — if not winner, resolve as no-op; build PublishRequest (carry disclosure_tag, dryRun, customerId); call connector.publish(); on PublishOk → markUrlRegistryPublished + markDeployStatus('published') + enqueue publish.verify; on PublishDryRun → insertUrlRegistryDryRun (no queue terminal change beyond releasing lease back to 'queued'); on PublishThrottled → requeue to 'queued' + throw RetryableJobError(delay); on NOT_CONFIGURED → mark registry 'failed', queue back to 'queued', resolve (no retry); on retryable error → RetryableJobError; else queue 'failed' + DLQ. Catch unique-violation as no-op.",
+    "acceptanceCriteria": [
+      "a redelivered job after a successful publish does NOT call connector.publish() a second time (claim lost)",
+      "dry-run leaves the queue row claimable for a later real publish (not stranded)",
+      "throttled deferral re-queues to 'queued', never drops",
+      "unique-violation does not dead-letter as 'failed'"
+    ]
+  },
+  {
+    "id": "T13",
+    "title": "publish.dispatch handler (reaper + transactional claim + stub skip + fan-out)",
+    "files": [
+      "src/deploy/dispatch.ts"
+    ],
+    "dependsOn": [
+      "T05",
+      "T06",
+      "T09",
+      "T11"
+    ],
+    "parallelGroup": 5,
+    "description": "Implement publish.dispatch: reapStaleLeases(DEPLOY_LEASE_TIMEOUT_MS); for each 'ready' channel from registry.readiness() (SKIP stub channels — their rows stay 'queued'), compute remaining throttle budget and claimNextDeployBatch; enqueue one publish.unit per claimed row with singletonKey=publish:${assetId}:${channelClass} and deadLetter=DLQ_PUBLISH_UNIT; pass through dryRun from payload/env.",
+    "acceptanceCriteria": [
+      "stub channels are never enqueued and their rows remain 'queued'",
+      "stale leases are reclaimed to 'queued' before claiming",
+      "no more than the remaining throttle budget is leased per (customer,channel)",
+      "singletonKey prevents double-enqueue of the same asset+channel"
+    ]
+  },
+  {
+    "id": "T14",
+    "title": "publish.verify handler (indexing stamp)",
+    "files": [
+      "src/deploy/verifyIndexing.ts"
+    ],
+    "dependsOn": [
+      "T05",
+      "T06",
+      "T11"
+    ],
+    "parallelGroup": 5,
+    "description": "Implement publish.verify: load the url_registry row; if the connector has confirmIndexing, call it and stamp indexing_status ('submitted' when present-but-not-crawlable, never 'indexed' for owned_net FsTarget); else 'unknown'. Backoff retries to a cap then settle 'unknown'. NO scraping of external engines.",
+    "acceptanceCriteria": [
+      "owned_net never gets indexing_status='indexed' from file presence",
+      "handler performs no external-engine scraping",
+      "retries respect a cap then settle 'unknown'"
+    ]
+  },
+  {
+    "id": "T15",
+    "title": "Wire publish handlers + dispatch cron into worker.ts",
+    "files": [
+      "src/scheduler/worker.ts"
+    ],
+    "dependsOn": [
+      "T12",
+      "T13",
+      "T14"
+    ],
+    "parallelGroup": 6,
+    "description": "Register the 3 publish handlers via the existing injected-handler pattern (add to the handlers config object and the work() registrations), and register a durable publish.dispatch cron (configurable cadence, default daily) mirroring the cycle.cron dispatcher. Map RetryableJobError→retry, PermanentJobError/catch→resolve, exactly as cycle.*. Do NOT touch cycle.plan/response.run logic.",
+    "acceptanceCriteria": [
+      "worker boots and registers publish.dispatch/unit/verify handlers",
+      "publish.dispatch cron schedule is durable (idempotent on re-boot)",
+      "RetryableJobError retries; NOT_CONFIGURED path does not loop",
+      "existing cycle handlers unchanged"
+    ]
+  },
+  {
+    "id": "T16",
+    "title": "CLIs — approveDeploy, publishContent, deployStatus",
+    "files": [
+      "src/cli/approveDeploy.ts",
+      "src/cli/publishContent.ts",
+      "src/cli/deployStatus.ts"
+    ],
+    "dependsOn": [
+      "T05",
+      "T06",
+      "T13"
+    ],
+    "parallelGroup": 6,
+    "description": "approveDeploy.ts: human sign-off setting approved_by (approver identity) + approved_at on queue rows (by asset/set). publishContent.ts: manual dispatch pass, dry-run by default, --execute flips DEPLOY_DRY_RUN false. deployStatus.ts: print registry readiness + url_registry rows + indexing status report. Mirror existing CLI structure (queueContent.ts/gateContent.ts).",
+    "acceptanceCriteria": [
+      "approveDeploy records a non-null approver identity + timestamp",
+      "publishContent defaults to dry-run; --execute is required for real writes",
+      "deployStatus reads only (no writes)"
+    ]
+  },
+  {
+    "id": "T17",
+    "title": "Connector/registry/§7#3 tests",
+    "files": [
+      "test/deploy/connector-not-configured.test.ts",
+      "test/deploy/registry-subset-channel-enum.test.ts",
+      "test/deploy/no-community-connector.test.ts"
+    ],
+    "dependsOn": [
+      "T06",
+      "T08"
+    ],
+    "parallelGroup": 7,
+    "description": "Assert stub connectors return NOT_CONFIGURED; registry deny-default for unknown channels; registry key set is a SUBSET of the content_asset channel_class enum; no community/review connector or enum member exists end-to-end.",
+    "acceptanceCriteria": [
+      "a community/review channel cannot resolve to a publishing connector",
+      "registry keys ⊆ ChannelClass ⊆ content_asset CHECK",
+      "tests pass under vitest"
+    ]
+  },
+  {
+    "id": "T18",
+    "title": "owned_net §0 + render + dry-run + indexing tests",
+    "files": [
+      "test/deploy/ownedNet-deferred-url.test.ts",
+      "test/deploy/ownedNet-host-blocklist.test.ts",
+      "test/deploy/render-jsonld.test.ts",
+      "test/deploy/dryrun-no-side-effect.test.ts",
+      "test/deploy/owned-net-indexing-not-indexed.test.ts"
+    ],
+    "dependsOn": [
+      "T07"
+    ],
+    "parallelGroup": 7,
+    "description": "Assert the deferred token resolves against config (free-form URL rejected), slug derived from asset row, host-blocklist fail-closed, deterministic HTML+JSON-LD render with disclosure embedded, dry-run writes no file, and owned_net never reports indexing_status='indexed'.",
+    "acceptanceCriteria": [
+      "a blocklisted host fails closed before any write",
+      "dry-run produces zero filesystem side effects",
+      "render output is deterministic/byte-identical on re-run",
+      "indexing test asserts 'submitted'/'unknown' only for owned_net"
+    ]
+  },
+  {
+    "id": "T19",
+    "title": "Throttle, eligibility, approval, disclosure gate tests",
+    "files": [
+      "test/deploy/throttle-cadence.test.ts",
+      "test/deploy/throttle-transactional-cap.test.ts",
+      "test/deploy/throttle-per-customer.test.ts",
+      "test/deploy/eligibility-regate-flip.test.ts",
+      "test/deploy/approval-failclosed.test.ts",
+      "test/deploy/disclosure-required-gate.test.ts"
+    ],
+    "dependsOn": [
+      "T09",
+      "T10",
+      "T05"
+    ],
+    "parallelGroup": 7,
+    "description": "Assert: fail-closed on missing policy; daily-cap and min-interval enforcement; per-customer isolation incl. the NULL-customer bucket; the transactional cap (no over-publish under concurrent claim); eligibility flips false when gate_status changes after queueing; unapproved rows are not eligible; external channel + null disclosure is blocked while owned_net is allowed.",
+    "acceptanceCriteria": [
+      "transactional-cap test simulates concurrent claims and asserts no over-publish beyond max_per_day",
+      "per-customer test covers the COALESCE NULL bucket",
+      "approval-failclosed test confirms NULL approved_by blocks publish"
+    ]
+  },
+  {
+    "id": "T20",
+    "title": "Idempotency, claim-lease, dispatch-skip, verify, read-only-feedback tests",
+    "files": [
+      "test/deploy/idempotency-claim-before-publish.test.ts",
+      "test/deploy/idempotency-no-double-publish.test.ts",
+      "test/deploy/claim-lease-skip-locked.test.ts",
+      "test/deploy/dispatch-skip-stub-channels.test.ts",
+      "test/deploy/verify-indexing-stamp.test.ts",
+      "test/deploy/publish-tracking-readonly.test.ts"
+    ],
+    "dependsOn": [
+      "T12",
+      "T13",
+      "T14"
+    ],
+    "parallelGroup": 7,
+    "description": "Assert: the url_registry claim happens before the connector side effect (a redelivered job does not double-publish, using a spy connector counting publish() calls); the partial-unique prevents a second live row; SKIP LOCKED concurrent claim yields single-consumer; dispatch skips stub channels leaving rows 'queued'; verify stamps indexing_status; listPublishedUrlsForMonitoring performs no writes (read-only feedback contract).",
+    "acceptanceCriteria": [
+      "spy connector.publish() is called exactly once across a redelivered/retried job",
+      "concurrent claim test shows no double-claim of the same queue row",
+      "dispatch-skip test confirms stub rows remain 'queued'",
+      "read-only test asserts no INSERT/UPDATE/DELETE from the monitoring read path"
+    ]
+  }
+]

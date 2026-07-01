@@ -1,0 +1,288 @@
+[
+  {
+    "id": "T01",
+    "title": "types",
+    "files": [
+      "src/surfaces/types.ts"
+    ],
+    "dependsOn": [],
+    "parallelGroup": 1,
+    "description": "Citation/SurfaceAnswer/SurfaceParser",
+    "acceptanceCriteria": [
+      "compiles"
+    ]
+  },
+  {
+    "id": "T02",
+    "title": "compliance",
+    "files": [
+      "src/surfaces/compliance.ts"
+    ],
+    "dependsOn": [
+      "T01"
+    ],
+    "parallelGroup": 2,
+    "description": "manifest+invariants",
+    "acceptanceCriteria": [
+      "AIO/Naver official_serp"
+    ]
+  },
+  {
+    "id": "T03",
+    "title": "pricing",
+    "files": [
+      "src/surfaces/surfacePricing.ts"
+    ],
+    "dependsOn": [
+      "T01"
+    ],
+    "parallelGroup": 2,
+    "description": "surfaceUsdPerCall",
+    "acceptanceCriteria": [
+      "pricing.ts unchanged"
+    ]
+  },
+  {
+    "id": "T04",
+    "title": "migration0012",
+    "files": [
+      "src/db/migrations/0012_phase4_surfaces.sql"
+    ],
+    "dependsOn": [],
+    "parallelGroup": 1,
+    "description": "cols+seed+queues",
+    "acceptanceCriteria": [
+      "idempotent;mention_judgment untouched"
+    ]
+  },
+  {
+    "id": "T05",
+    "title": "schema+repo",
+    "files": [
+      "src/db/schema.ts",
+      "src/db/repo.ts"
+    ],
+    "dependsOn": [
+      "T04"
+    ],
+    "parallelGroup": 3,
+    "description": "modality map;inserts",
+    "acceptanceCriteria": [
+      "modality returned;idempotent"
+    ]
+  },
+  {
+    "id": "T06",
+    "title": "seams",
+    "files": [
+      "src/surfaces/serp/serpClient.ts",
+      "src/surfaces/scrape/rpaRunner.ts"
+    ],
+    "dependsOn": [
+      "T01"
+    ],
+    "parallelGroup": 2,
+    "description": "NotConfigured stubs",
+    "acceptanceCriteria": [
+      "configured false"
+    ]
+  },
+  {
+    "id": "T07",
+    "title": "SurfaceAdapter",
+    "files": [
+      "src/surfaces/SurfaceAdapter.ts"
+    ],
+    "dependsOn": [
+      "T01",
+      "T03",
+      "T06"
+    ],
+    "parallelGroup": 3,
+    "description": "NO_ANSWER error;arming",
+    "acceptanceCriteria": [
+      "judge NOT_CONFIGURED"
+    ]
+  },
+  {
+    "id": "T08",
+    "title": "serpParsers",
+    "files": [
+      "src/surfaces/serp/parse/aiOverviewParser.ts",
+      "src/surfaces/serp/parse/naverParser.ts"
+    ],
+    "dependsOn": [
+      "T01"
+    ],
+    "parallelGroup": 2,
+    "description": "prose-only;NO_AIO",
+    "acceptanceCriteria": [
+      "no citation in answerText"
+    ]
+  },
+  {
+    "id": "T09",
+    "title": "scrapeParsers",
+    "files": [
+      "src/surfaces/scrape/parse/copilotParser.ts",
+      "src/surfaces/scrape/parse/metaAiParser.ts",
+      "src/surfaces/scrape/parse/lineParser.ts",
+      "src/surfaces/scrape/parse/kakaoParser.ts"
+    ],
+    "dependsOn": [
+      "T01"
+    ],
+    "parallelGroup": 2,
+    "description": "prose-only;drift",
+    "acceptanceCriteria": [
+      "drift NO_ANSWER"
+    ]
+  },
+  {
+    "id": "T10",
+    "title": "adapters",
+    "files": [
+      "src/surfaces/serp/adapters/googleAio.ts",
+      "src/surfaces/serp/adapters/naverAi.ts",
+      "src/surfaces/scrape/adapters/copilot.ts",
+      "src/surfaces/scrape/adapters/metaAi.ts",
+      "src/surfaces/scrape/adapters/line.ts",
+      "src/surfaces/scrape/adapters/kakao.ts"
+    ],
+    "dependsOn": [
+      "T07",
+      "T08",
+      "T09",
+      "T02"
+    ],
+    "parallelGroup": 4,
+    "description": "SerpClient-only;armed scrape",
+    "acceptanceCriteria": [
+      "AIO/Naver not RpaRunner-constructible"
+    ]
+  },
+  {
+    "id": "T11",
+    "title": "registry",
+    "files": [
+      "src/surfaces/registry.ts",
+      "src/providers/registry.ts"
+    ],
+    "dependsOn": [
+      "T10"
+    ],
+    "parallelGroup": 5,
+    "description": "stubs into buildRegistry",
+    "acceptanceCriteria": [
+      "surfaces not_configured"
+    ]
+  },
+  {
+    "id": "T12",
+    "title": "selection",
+    "files": [
+      "src/surfaces/surfaceSelection.ts"
+    ],
+    "dependsOn": [
+      "T05",
+      "T11"
+    ],
+    "parallelGroup": 6,
+    "description": "drop not-ready/scrape-baseline",
+    "acceptanceCriteria": [
+      "not_configured excluded"
+    ]
+  },
+  {
+    "id": "T13",
+    "title": "clamp",
+    "files": [
+      "src/sampling/plan.ts"
+    ],
+    "dependsOn": [
+      "T05"
+    ],
+    "parallelGroup": 6,
+    "description": "non-chat nSamples 1",
+    "acceptanceCriteria": [
+      "serp/scrape 1 work_unit"
+    ]
+  },
+  {
+    "id": "T14",
+    "title": "nativeReview",
+    "files": [
+      "src/surfaces/nativeReview.ts",
+      "src/pipeline/runCycle.ts"
+    ],
+    "dependsOn": [
+      "T05",
+      "T02"
+    ],
+    "parallelGroup": 7,
+    "description": "flag+hook both paths",
+    "acceptanceCriteria": [
+      "SMR identical on/off"
+    ]
+  },
+  {
+    "id": "T15",
+    "title": "preflight+cache",
+    "files": [
+      "src/pipeline/runCycle.ts",
+      "src/cost/budget.ts"
+    ],
+    "dependsOn": [
+      "T13"
+    ],
+    "parallelGroup": 7,
+    "description": "surface estimate;carry-forward",
+    "acceptanceCriteria": [
+      "no re-judge on cache hit"
+    ]
+  },
+  {
+    "id": "T16",
+    "title": "wire",
+    "files": [
+      "src/cli/diagnose.ts",
+      "src/cli/diagnoseUrl.ts",
+      "src/scheduler/worker.ts"
+    ],
+    "dependsOn": [
+      "T12",
+      "T11"
+    ],
+    "parallelGroup": 8,
+    "description": "selectEligibleModels;limiters",
+    "acceptanceCriteria": [
+      "limiter per surfaceId"
+    ]
+  },
+  {
+    "id": "T17",
+    "title": "tests",
+    "files": [
+      "test/surfaces/serpOnlyGuard.test.ts",
+      "test/surfaces/proseCitationSeparation.test.ts",
+      "test/surfaces/surfaceSelection.test.ts",
+      "test/surfaces/sampleClamp.test.ts",
+      "test/surfaces/surfaceAdapter.e2e.test.ts"
+    ],
+    "dependsOn": [
+      "T07",
+      "T08",
+      "T09",
+      "T10",
+      "T11",
+      "T12",
+      "T13",
+      "T14"
+    ],
+    "parallelGroup": 9,
+    "description": "parsers/guard/selection/N=1/e2e",
+    "acceptanceCriteria": [
+      "e2e to mention_judgment no core edits"
+    ]
+  }
+]

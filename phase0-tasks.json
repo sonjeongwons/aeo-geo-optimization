@@ -1,0 +1,350 @@
+[
+  {
+    "id": "T01",
+    "title": "Scaffold project: package.json, tsconfig, lint, docker-compose, Dockerfile, env",
+    "files": [
+      "package.json",
+      "tsconfig.json",
+      ".eslintrc.cjs",
+      "vitest.config.ts",
+      "docker-compose.yml",
+      "Dockerfile",
+      ".env.example",
+      "src/config/env.ts"
+    ],
+    "dependsOn": [],
+    "parallelGroup": 0,
+    "description": "Initialize Node 22 ESM TS project. Deps: @google/genai, pg, kysely, node-pg-migrate, pg-boss, zod, bottleneck, fastify, pino, js-yaml, dotenv; dev: typescript, tsx, vitest, @types/*. docker-compose with TWO services: app (node:22-slim) and timescaledb (timescale/timescaledb-ha:pg16) with healthcheck. .env.example with GEMINI_API_KEY, DATABASE_URL, all other *_API_KEY blank. src/config/env.ts zod-validates process env and fails fast. npm scripts: build, dev, migrate, diagnose, gen-template, test.",
+    "acceptanceCriteria": [
+      "`npm install` succeeds and `npm run build` (tsc) exits 0",
+      "`docker compose config` validates; timescaledb uses a timescale image with a healthcheck",
+      "env.ts throws when DATABASE_URL missing and parses GEMINI_API_KEY as optional",
+      ".env.example documents GEMINI_API_KEY as the only required provider key"
+    ]
+  },
+  {
+    "id": "T02",
+    "title": "DB migrations: dimensions, hypertables, views/aggregates, compression/retention",
+    "files": [
+      "src/db/migrations/0001_dimensions.sql",
+      "src/db/migrations/0002_hypertables.sql",
+      "src/db/migrations/0003_views_aggregates.sql",
+      "src/db/migrations/0004_compression_retention.sql",
+      "src/db/migrate.ts"
+    ],
+    "dependsOn": [
+      "T01"
+    ],
+    "parallelGroup": 0,
+    "description": "Author the four SQL migrations exactly per the canonical DDL: plain dimension tables incl. work_unit + response_cache + rotation_state (plain, legal unique keys); response_raw/mention_judgment/llm_call hypertables (mention_judgment DENORMALIZED with status+coords + same-table evidence CHECK); current_judgment DISTINCT ON view + run_smr_overall view; cost_daily single-hypertable continuous aggregate + policy; compression + retention policies. migrate.ts runs node-pg-migrate against DATABASE_URL.",
+    "acceptanceCriteria": [
+      "`npm run migrate` applies all four migrations cleanly with NO 'only 1 hypertable permitted' or 'unique index must include partition column' errors",
+      "create_hypertable succeeds for response_raw, mention_judgment, llm_call",
+      "current_judgment returns exactly one row per response_raw_id (latest captured_at), verified by inserting two judgments for one response",
+      "cost_daily continuous aggregate and its policy create successfully",
+      "No DB CHECK constraint references a different table"
+    ]
+  },
+  {
+    "id": "T03",
+    "title": "Domain types, mention Zod schema, and shared brand_rank module",
+    "files": [
+      "src/domain/types.ts",
+      "src/domain/metrics.types.ts",
+      "src/domain/mention.schema.ts",
+      "src/domain/rank.ts",
+      "src/domain/errors.ts"
+    ],
+    "dependsOn": [
+      "T01"
+    ],
+    "parallelGroup": 1,
+    "description": "Pure IO-free domain layer shared with Phase 5. types.ts: Response atom, StoredMention, Run, ModelRef, LanguageCode. metrics.types.ts: SMR/SoV/Visibility/PriorityGap + decomposition shapes. mention.schema.ts: JudgeVerdict Zod object (single source -> Gemini responseSchema + TS type) + zodToGeminiSchema(). rank.ts: computeRank(answerText, entities[]) returning 1-based ordinal among {brand+competitors} by first offset, plus the canonical rank-rule doc string reused in the judge prompt. errors.ts: typed errors.",
+    "acceptanceCriteria": [
+      "mention.schema.ts exports JudgeVerdict + inferred type; zodToGeminiSchema produces a valid JSON Schema object",
+      "rank.ts computeRank is deterministic/pure, 1-based ordinal among brand+competitors by first offset, null when brand absent",
+      "no pg/@google imports anywhere in src/domain",
+      "tsc compiles the domain dir standalone"
+    ]
+  },
+  {
+    "id": "T04",
+    "title": "Provider adapter contract, registry, pricing, Gemini real adapter, stubs",
+    "files": [
+      "src/providers/types.ts",
+      "src/providers/pricing.ts",
+      "src/providers/gemini.ts",
+      "src/providers/stub.ts",
+      "src/providers/registry.ts",
+      "src/providers/index.ts"
+    ],
+    "dependsOn": [
+      "T03"
+    ],
+    "parallelGroup": 1,
+    "description": "Implement ProviderAdapter with GenerateResult/JudgeResult discriminated unions (NOT_CONFIGURED as a typed value), AdapterUsage{usd}, Modality + SurfaceCapability. pricing.ts: per-model price table + priceUsd(). gemini.ts: REAL adapter+judge via @google/genai (generate with temperature; judge with responseMimeType+responseSchema, temp 0). stub.ts: makeStubAdapter returning NOT_CONFIGURED. registry.ts + index.ts: buildRegistry() wires real Gemini + stubs for openai/anthropic/perplexity/grok/mistral/deepseek/llama-groq; readiness() from env keys.",
+    "acceptanceCriteria": [
+      "with no GEMINI_API_KEY, gemini.generate returns {ok:false, code:'NOT_CONFIGURED'} (no throw)",
+      "every non-Gemini adapter is status:'stub' and returns NOT_CONFIGURED from generate",
+      "buildRegistry().readiness() reports gemini ready iff GEMINI_API_KEY set, all others not_configured",
+      "gemini.judge passes responseMimeType:'application/json' and a responseSchema derived from JudgeVerdict",
+      "priceUsd computes usd from token counts and the model price row"
+    ]
+  },
+  {
+    "id": "T05",
+    "title": "Judge orchestration: LLM judge, evidence locator, rule fallback, extractMention",
+    "files": [
+      "src/judge/llmJudge.ts",
+      "src/judge/evidence.ts",
+      "src/judge/ruleFallback.ts",
+      "src/judge/extractMention.ts"
+    ],
+    "dependsOn": [
+      "T03",
+      "T04"
+    ],
+    "parallelGroup": 2,
+    "description": "§5.4 judge layer. llmJudge.ts: call gemini.judge with the shared rank rule in the prompt, Zod-validate, escalate to gemini-2.5-pro once on PARSE_FAILED. evidence.ts: alias/NFC-normalized locate -> {quote,start,end} (NOT strict verbatim). ruleFallback.ts: deterministic alias-normalized string/order matching using domain/rank.ts; sentiment='neutral'; real evidence window. extractMention.ts: orchestrate judge -> zod -> evidence-verify -> fallback -> abstain, setting provenance; records judge_raw/judge_model/usage for the ledger.",
+    "acceptanceCriteria": [
+      "extractMention never throws on bad/empty judge output; falls back deterministically",
+      "brand_mentioned=true with no locatable alias-normalized span -> downgraded to abstain",
+      "provenance is always judge|fallback|abstain and a located span exists whenever brand_mentioned=true",
+      "rule fallback brand_rank matches domain/rank.ts output for the same input",
+      "a transliterated alias (hangul/katakana) is located by evidence.ts on a fixture"
+    ]
+  },
+  {
+    "id": "T06",
+    "title": "Sampling: density tiering, rotation cursor, language weighting, plan builder, cache",
+    "files": [
+      "src/sampling/density.ts",
+      "src/sampling/rotation.ts",
+      "src/sampling/languageWeight.ts",
+      "src/sampling/plan.ts",
+      "src/cost/cache.ts"
+    ],
+    "dependsOn": [
+      "T03"
+    ],
+    "parallelGroup": 2,
+    "description": "§5.3 sampling. density.ts: per-tier due-resolution + sample depth (core weekly N=5, secondary biweekly N=3, longtail monthly N=3 cheap-only). rotation.ts: read/advance rotation_state cursor. languageWeight.ts: order by weight, clamp to budget.max_languages, deterministic lowest-first trim. plan.ts: build work-units (q x model x lang x sampleIdx) at temp 0.7, compute request_hash, return N_total for snapshot; baseline path includes priority languages (NOT English-only). cache.ts: request_hash dedup for cross-cycle duplicates only, NEVER collapsing intra-cycle samples.",
+    "acceptanceCriteria": [
+      "a baseline plan for a multilingual customer includes >1 language (priority languages), not English-only",
+      "plan.ts returns N_total equal to the number of work-units it emits",
+      "cache.ts does NOT return a hit for distinct sample_idx within the same cycle (test)",
+      "rotation advances the cursor and selects a different secondary slice on consecutive cycles (no starvation)",
+      "longtail questions are scheduled only on the monthly cadence and only with the cheap model"
+    ]
+  },
+  {
+    "id": "T07",
+    "title": "Cost: budget caps (USD, rollup-based, fail-closed), ledger, alerts",
+    "files": [
+      "src/cost/budget.ts",
+      "src/cost/ledger.ts",
+      "src/cost/alerts.ts"
+    ],
+    "dependsOn": [
+      "T02",
+      "T03"
+    ],
+    "parallelGroup": 3,
+    "description": "§11 cost layer. budget.ts: shape caps (max_models/samples/languages) at plan time + weekly/monthly USD caps; preflight() rejects over-budget runs; assertWithinCap() reads rolling spend from cost_daily (NOT a raw llm_call scan) and FAILS CLOSED when cost data missing. ledger.ts: insert llm_call rows (generation+judge, usd, cache_hit, usd=0 for cache/abstain/not_configured). alerts.ts: checkThreshold() vs % of cap -> pluggable AlertSink (pino now).",
+    "acceptanceCriteria": [
+      "preflight marks a run over_budget when estimated USD exceeds remaining cap",
+      "assertWithinCap reads from cost_daily, not a full scan of llm_call (test/query inspection)",
+      "missing token/cost data causes assertWithinCap to BLOCK (fail-closed), not pass",
+      "ledger writes one row per generation AND one per judge call; cache hits recorded usd=0, cache_hit=true",
+      "alerts.checkThreshold fires the AlertSink at the configured % threshold"
+    ]
+  },
+  {
+    "id": "T08",
+    "title": "Guardrail gate layer: interface, evidence-required, verifiable-numbers, publish stubs",
+    "files": [
+      "src/guardrails/gate.ts",
+      "src/guardrails/evidenceRequiredGate.ts",
+      "src/guardrails/verifiableNumbersGate.ts",
+      "src/guardrails/publishStubs.ts"
+    ],
+    "dependsOn": [
+      "T03"
+    ],
+    "parallelGroup": 3,
+    "description": "§7 pluggable gates. gate.ts: Gate{name,phase,apply}, GateResult, runGates() fold. evidenceRequiredGate: brand_mentioned without a located alias-normalized span -> downgraded_abstain (excluded from numerator, still persisted). verifiableNumbersGate: report-time, asserts every emitted metric derives from gate-passed current_judgment rows; the report DTO type permits only {metric,value,n_total,evidence_refs[]} with no free-text claims field. publishStubs: phrasingVariation/claimVerification/disclosure registered phase:'publish' returning pass+'PHASE_0_NOOP'.",
+    "acceptanceCriteria": [
+      "runGates short-circuits on first downgrade and returns the mutated verdict",
+      "evidenceRequiredGate downgrades a no-evidence brand_mentioned verdict to abstain",
+      "the report DTO type has NO free-text claims field (compile-time enforced)",
+      "publish-phase gates exist in the registry and return PHASE_0_NOOP",
+      "gate list is injected (not hard-imported) into the pipeline"
+    ]
+  },
+  {
+    "id": "T09",
+    "title": "DB repositories (Kysely): runs, responses, judgments, cost, config, rotation",
+    "files": [
+      "src/db/pool.ts",
+      "src/db/kysely.ts",
+      "src/db/schema.ts",
+      "src/db/repo.ts"
+    ],
+    "dependsOn": [
+      "T02",
+      "T03"
+    ],
+    "parallelGroup": 3,
+    "description": "Typed data access over the migrations (the only place SQL lives outside migrations/views). schema.ts: Kysely DB type mirroring all tables/views. repo.ts: createRun + snapshot n_total, insertResponseRaw, insertJudgment, upsertWorkUnit/markDone, insert llm_call, read current_judgment/run_smr_overall, rotation read/advance, template/customer upsert. pool.ts/kysely.ts: pg pool + Kysely instance.",
+    "acceptanceCriteria": [
+      "all repo methods are typed against schema.ts and compile",
+      "insertResponseRaw + insertJudgment round-trip and are readable via current_judgment",
+      "createRun persists the n_total snapshot before any response insert",
+      "markWorkUnitDone is idempotent (re-call for an existing key does not duplicate)",
+      "queries against run_smr_overall return brand_hits/judged_ok/inv_rank_sum"
+    ]
+  },
+  {
+    "id": "T10",
+    "title": "Config: template Zod schema, YAML loader, emora & kbeauty seed templates",
+    "files": [
+      "src/config/template.schema.ts",
+      "src/config/loadTemplate.ts",
+      "config/customers/emora.yaml",
+      "config/customers/kbeauty.yaml"
+    ],
+    "dependsOn": [
+      "T09"
+    ],
+    "parallelGroup": 4,
+    "description": "§5.5/§14 config. template.schema.ts: Zod for customer YAML (brand+aliases, competitors+aliases, languages+weights, questions with text/language/funnel_stage/density_tier, budget). loadTemplate.ts: parse+validate YAML and upsert customer/brand/competitor/question/customer_language/budget/model rows. Seed emora.yaml and kbeauty.yaml from §14.1/§14.2 (multilingual questions, competitor sets, density tiers, weights, sensible budget caps).",
+    "acceptanceCriteria": [
+      "loadTemplate validates and upserts emora.yaml without error; re-running is idempotent",
+      "emora.yaml and kbeauty.yaml include multiple languages with weights and questions tagged by density_tier",
+      "invalid YAML (missing brand) is rejected with a clear zod error",
+      "seeded model rows include gemini-2.5-flash (judge) and gemini-2.5-flash-lite (cheap_monitor) with prices"
+    ]
+  },
+  {
+    "id": "T11",
+    "title": "Metrics aggregation + report assembler",
+    "files": [
+      "src/metrics/aggregate.ts",
+      "src/metrics/report.ts"
+    ],
+    "dependsOn": [
+      "T08",
+      "T09"
+    ],
+    "parallelGroup": 4,
+    "description": "§5.2 aggregation by PLAIN SQL over current_judgment (guardrail_status='pass'), denominator = run.n_total snapshot. aggregate.ts: computeSMR, computeVisibility=Σ(1/brand_rank)/n_total, computeSoV from brand+competitor occurrence counts, computePriorityGap, plus per-model/language/question decomposition. report.ts: assemble baseline/weekly report as {metric,value,n_total,evidence_refs[]} tuples ONLY, recomputed from raw at report time, with a self-judge-bias disclosure and abstain-rate floor note; synchronous (direct SQL) for baseline.",
+    "acceptanceCriteria": [
+      "SMR = brand_hits / run.n_total (snapshot), NOT judgment count",
+      "Visibility uses Σ(1/brand_rank)/n_total; SoV denominator = brand+competitor total mentions",
+      "report contains evidence_refs for every metric and NO free-text claim field",
+      "re-judging a response (2nd judgment row) does NOT change counts twice (latest-judgment-wins verified)",
+      "report includes the self-judge-bias disclosure string and abstain-rate"
+    ]
+  },
+  {
+    "id": "T12",
+    "title": "Scheduler: JobQueue interface + pg-boss impl, jobs, worker with cron + boot catch-up",
+    "files": [
+      "src/scheduler/queue.ts",
+      "src/scheduler/jobs.ts",
+      "src/scheduler/worker.ts"
+    ],
+    "dependsOn": [
+      "T07",
+      "T09"
+    ],
+    "parallelGroup": 4,
+    "description": "§5.6/§9 durable scheduling. queue.ts: JobQueue interface + pg-boss impl (durable cron, retries/backoff, dead-letter). jobs.ts: job names/payloads cycle.plan, response.run, cycle.aggregate. worker.ts: register handlers, per-provider Bottleneck limiter, weekly operating cron per customer, and a BOOT CATCH-UP that enqueues any missed-due operating cycle (no silently-skipped week). Retryable codes back off; NOT_CONFIGURED/PROVIDER_ERROR dead-letter the cell only.",
+    "acceptanceCriteria": [
+      "worker registers a weekly repeatable job per active customer and survives process restart (durable)",
+      "boot catch-up enqueues an operating cycle if the last run is older than the weekly cadence",
+      "retryable errors (RATE_LIMITED/TIMEOUT) retry with backoff; NOT_CONFIGURED does not retry",
+      "JobQueue is an interface with pg-boss behind it (swap seam intact)",
+      "per-provider Bottleneck limiter bounds concurrent Gemini calls"
+    ]
+  },
+  {
+    "id": "T13",
+    "title": "Pipeline: runResponse (one work-unit, 1 tx) and runCycle (plan -> fan-out -> aggregate)",
+    "files": [
+      "src/pipeline/runResponse.ts",
+      "src/pipeline/runCycle.ts"
+    ],
+    "dependsOn": [
+      "T05",
+      "T06",
+      "T07",
+      "T08",
+      "T09",
+      "T11",
+      "T12"
+    ],
+    "parallelGroup": 0,
+    "description": "The LOOP. runResponse.ts: for one work-unit in a single DB transaction — budget.assertWithinCap -> cache.check -> provider.generate -> insert response_raw + llm_call(generation) -> extractMention -> runGates -> insert mention_judgment + llm_call(judge) -> markWorkUnitDone. runCycle.ts: budget.preflight, build plan, snapshot n_total on run, fan-out response.run jobs (idempotent via work_unit PK), on completion enqueue cycle.aggregate -> metrics.aggregate -> report -> set run.status. Resumable: re-running skips done work_units.",
+    "acceptanceCriteria": [
+      "runResponse persists response_raw, mention_judgment, and BOTH llm_call rows atomically per unit",
+      "a crash mid-cycle followed by re-run skips already-done work_units (idempotent resume)",
+      "cycle sets run.status to completed/failed/over_budget and finished_at",
+      "NOT_CONFIGURED providers are excluded at plan time so no work_units are created for them today",
+      "aggregate runs only after all work-units for the run are done (exactly once)"
+    ]
+  },
+  {
+    "id": "T14",
+    "title": "CLI + Fastify API + entrypoint",
+    "files": [
+      "src/cli/diagnose.ts",
+      "src/cli/genTemplate.ts",
+      "src/api/server.ts",
+      "src/index.ts"
+    ],
+    "dependsOn": [
+      "T13",
+      "T10"
+    ],
+    "parallelGroup": 0,
+    "description": "Entry surfaces. diagnose.ts: `npm run diagnose -- --customer emora` loads template if needed, creates a baseline run, executes runCycle synchronously, prints the report JSON. genTemplate.ts: `npm run gen-template -- --industry X` uses Gemini to draft a question+competitor set saved as industry_template status='draft' (§5.5 human-review entry). server.ts (fastify): POST /diagnose (trigger baseline), GET /smr/:runId (report JSON, direct SQL), GET /healthz, GET /providers (readiness). index.ts: env check + start fastify + start pg-boss worker.",
+    "acceptanceCriteria": [
+      "`npm run diagnose -- --customer emora` runs the FULL loop end-to-end with only GEMINI_API_KEY and prints a baseline SMR report",
+      "GET /providers reports gemini ready and all others not_configured",
+      "GET /smr/:runId returns a recomputed-from-raw report with evidence_refs",
+      "gen-template writes a draft industry_template row",
+      "index.ts starts both the API and the durable worker; /healthz returns 200"
+    ]
+  },
+  {
+    "id": "T15",
+    "title": "Tests: metrics, fallback, judge-parse, rank-agreement, budget, cache-samples, density, Gemini integration",
+    "files": [
+      "test/metrics.aggregate.test.ts",
+      "test/rule-fallback.test.ts",
+      "test/judge-parse.test.ts",
+      "test/rank-agreement.test.ts",
+      "test/budget.test.ts",
+      "test/cache-samples.test.ts",
+      "test/density-rotation.test.ts",
+      "test/gemini.integration.test.ts"
+    ],
+    "dependsOn": [
+      "T11",
+      "T05",
+      "T06",
+      "T07",
+      "T04"
+    ],
+    "parallelGroup": 5,
+    "description": "Vitest suite. metrics: SMR/Visibility/SoV/PriorityGap math incl. n_total-snapshot denominator and latest-judgment-wins. rule-fallback: alias/transliteration matching + rank. judge-parse: Zod validation + escalation path. rank-agreement: judge prompt rule and ruleFallback produce IDENTICAL rank on fixtures (load-bearing for Visibility). budget: USD caps + fail-closed + rollup read. cache-samples: one cycle yields N physical calls per (q,model,lang). density-rotation: cursor advances, no starvation. gemini.integration: real call gated on GEMINI_API_KEY (skipped otherwise).",
+    "acceptanceCriteria": [
+      "`npm test` passes with all non-integration tests green",
+      "rank-agreement test asserts judge-rule output == ruleFallback output on >=3 fixtures",
+      "cache-samples test fails if the cache collapses intra-cycle samples",
+      "budget test verifies fail-closed behavior when cost data missing",
+      "gemini.integration test is automatically skipped when GEMINI_API_KEY is absent and passes when present"
+    ]
+  }
+]

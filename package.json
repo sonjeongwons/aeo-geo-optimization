@@ -1,0 +1,59 @@
+{
+  "name": "aeo-geo-engine",
+  "version": "0.1.0",
+  "description": "Phase 0 — AEO/GEO Monitoring + SMR Engine",
+  "type": "module",
+  "workspaces": [
+    "apps/web"
+  ],
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "build": "tsc --noEmit",
+    "dev": "tsx watch src/index.ts",
+    "migrate": "tsx src/db/migrate.ts",
+    "diagnose": "tsx src/cli/diagnose.ts",
+    "gen-template": "tsx src/cli/genTemplate.ts",
+    "diagnose-url": "tsx src/cli/diagnoseUrl.ts",
+    "review-template": "tsx src/cli/reviewTemplate.ts",
+    "gen-content": "tsx src/cli/genContent.ts",
+    "gate-content": "tsx src/cli/gateContent.ts",
+    "review-claims": "tsx src/cli/reviewClaims.ts",
+    "queue-content": "tsx src/cli/queueContent.ts",
+    "approve-deploy": "tsx src/cli/approveDeploy.ts",
+    "publish-content": "tsx src/cli/publishContent.ts",
+    "deploy-status": "tsx src/cli/deployStatus.ts",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "verify:live": "tsx scripts/live-verify.mts",
+    "verify:live:p1": "tsx scripts/live-verify-p1.mts",
+    "verify:live:p3": "tsx scripts/live-verify-p3.mts",
+    "lint": "eslint src test --ext .ts",
+    "dev:web": "npm --workspace apps/web run dev"
+  },
+  "dependencies": {
+    "@google/genai": "^1.0.0",
+    "bottleneck": "^2.19.5",
+    "dotenv": "^16.4.5",
+    "fastify": "^5.0.0",
+    "js-yaml": "^4.1.0",
+    "kysely": "^0.27.0",
+    "node-pg-migrate": "^7.0.0",
+    "pg": "^8.13.0",
+    "pg-boss": "^10.0.0",
+    "pino": "^9.0.0",
+    "zod": "^3.23.0"
+  },
+  "devDependencies": {
+    "@types/js-yaml": "^4.0.9",
+    "@types/node": "^22.0.0",
+    "@types/pg": "^8.11.0",
+    "typescript": "^5.5.0",
+    "tsx": "^4.16.0",
+    "vitest": "^2.0.0",
+    "@typescript-eslint/eslint-plugin": "^8.0.0",
+    "@typescript-eslint/parser": "^8.0.0",
+    "eslint": "^9.0.0"
+  }
+}

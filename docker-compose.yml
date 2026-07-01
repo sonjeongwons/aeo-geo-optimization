@@ -1,0 +1,44 @@
+services:
+  timescaledb:
+    image: timescale/timescaledb-ha:pg16
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: aeo
+      POSTGRES_PASSWORD: aeo_secret
+      POSTGRES_DB: aeo_geo
+    ports:
+      - '5432:5432'
+    volumes:
+      - timescaledb_data:/home/postgres/pgdata/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U aeo -d aeo_geo']
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    depends_on:
+      timescaledb:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgres://aeo:aeo_secret@timescaledb:5432/aeo_geo
+      GEMINI_API_KEY: ${GEMINI_API_KEY:-}
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+      PERPLEXITY_API_KEY: ${PERPLEXITY_API_KEY:-}
+      GROK_API_KEY: ${GROK_API_KEY:-}
+      MISTRAL_API_KEY: ${MISTRAL_API_KEY:-}
+      DEEPSEEK_API_KEY: ${DEEPSEEK_API_KEY:-}
+      LLAMA_GROQ_API_KEY: ${LLAMA_GROQ_API_KEY:-}
+      LOG_LEVEL: ${LOG_LEVEL:-info}
+      PORT: ${PORT:-3000}
+    ports:
+      - '3000:3000'
+
+volumes:
+  timescaledb_data:

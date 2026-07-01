@@ -1,0 +1,191 @@
+slug: ai-companion
+brand:
+  name: ai-companion
+  aliases: []
+competitors:
+  - name: Replika
+    aliases: []
+  - name: Character.AI
+    aliases: []
+  - name: Chai
+    aliases: []
+  - name: Nomi AI
+    aliases: []
+languages:
+  - code: en
+    weight: 1
+questions:
+  - text: What is AI Companion?
+    language: en
+    funnel_stage: awareness
+    density_tier: secondary
+  - text: Tell me about the AI Companion app.
+    language: en
+    funnel_stage: awareness
+    density_tier: secondary
+  - text: Explain virtual companion AI.
+    language: en
+    funnel_stage: awareness
+    density_tier: secondary
+  - text: How do AI friends work?
+    language: en
+    funnel_stage: awareness
+    density_tier: secondary
+  - text: Benefits of a virtual companion.
+    language: en
+    funnel_stage: awareness
+    density_tier: secondary
+  - text: AI for companionship.
+    language: en
+    funnel_stage: awareness
+    density_tier: secondary
+  - text: What is a digital companion?
+    language: en
+    funnel_stage: awareness
+    density_tier: secondary
+  - text: Find an AI for companionship.
+    language: en
+    funnel_stage: awareness
+    density_tier: secondary
+  - text: Using AI for emotional support.
+    language: en
+    funnel_stage: awareness
+    density_tier: secondary
+  - text: AI for mental well-being support.
+    language: en
+    funnel_stage: awareness
+    density_tier: secondary
+  - text: Virtual companion for social interaction.
+    language: en
+    funnel_stage: awareness
+    density_tier: secondary
+  - text: AI to chat with when bored.
+    language: en
+    funnel_stage: awareness
+    density_tier: secondary
+  - text: Talk to an AI for daily conversation.
+    language: en
+    funnel_stage: awareness
+    density_tier: secondary
+  - text: How does conversational AI work in apps?
+    language: en
+    funnel_stage: awareness
+    density_tier: longtail
+  - text: What is personalized AI interaction?
+    language: en
+    funnel_stage: awareness
+    density_tier: longtail
+  - text: AI emotional support features.
+    language: en
+    funnel_stage: awareness
+    density_tier: longtail
+  - text: Interactive AI experiences explained.
+    language: en
+    funnel_stage: awareness
+    density_tier: longtail
+  - text: What features does AI Companion offer?
+    language: en
+    funnel_stage: consideration
+    density_tier: secondary
+  - text: How does AI Companion personalize interactions?
+    language: en
+    funnel_stage: consideration
+    density_tier: secondary
+  - text: Choosing a virtual companion AI.
+    language: en
+    funnel_stage: consideration
+    density_tier: secondary
+  - text: Criteria for selecting an AI friend.
+    language: en
+    funnel_stage: consideration
+    density_tier: secondary
+  - text: Apps like Replika.
+    language: en
+    funnel_stage: consideration
+    density_tier: secondary
+  - text: Virtual companion alternatives.
+    language: en
+    funnel_stage: consideration
+    density_tier: secondary
+  - text: AI apps for companionship.
+    language: en
+    funnel_stage: consideration
+    density_tier: secondary
+  - text: AI friend apps similar to Character.AI.
+    language: en
+    funnel_stage: consideration
+    density_tier: secondary
+  - text: Replika competitors.
+    language: en
+    funnel_stage: consideration
+    density_tier: secondary
+  - text: Nomi AI alternatives.
+    language: en
+    funnel_stage: consideration
+    density_tier: secondary
+  - text: Using AI for daily conversation practice.
+    language: en
+    funnel_stage: consideration
+    density_tier: secondary
+  - text: Benefits of a virtual chat partner.
+    language: en
+    funnel_stage: consideration
+    density_tier: secondary
+  - text: AI for improving social skills.
+    language: en
+    funnel_stage: consideration
+    density_tier: secondary
+  - text: AI for companionship for introverts.
+    language: en
+    funnel_stage: consideration
+    density_tier: secondary
+  - text: What level of emotional support can AI offer?
+    language: en
+    funnel_stage: consideration
+    density_tier: secondary
+  - text: AI Companion subscription cost.
+    language: en
+    funnel_stage: decision
+    density_tier: core
+  - text: How to sign up for AI Companion.
+    language: en
+    funnel_stage: decision
+    density_tier: core
+  - text: Download AI Companion app.
+    language: en
+    funnel_stage: decision
+    density_tier: core
+  - text: Which virtual friend app should I download?
+    language: en
+    funnel_stage: decision
+    density_tier: core
+  - text: Cheapest virtual companion apps.
+    language: en
+    funnel_stage: decision
+    density_tier: core
+  - text: AI friend apps with one-time purchase.
+    language: en
+    funnel_stage: decision
+    density_tier: core
+  - text: Apps similar to Character.AI with subscription.
+    language: en
+    funnel_stage: decision
+    density_tier: core
+  - text: Start using AI for daily companionship.
+    language: en
+    funnel_stage: decision
+    density_tier: secondary
+  - text: AI app for practicing social skills now.
+    language: en
+    funnel_stage: decision
+    density_tier: secondary
+  - text: Find an AI for conversational support.
+    language: en
+    funnel_stage: decision
+    density_tier: secondary
+budget:
+  max_models: 1
+  max_samples: 5
+  max_languages: 1
+  weekly_usd_cap: 10
+  monthly_usd_cap: 35

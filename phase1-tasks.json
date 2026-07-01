@@ -1,0 +1,422 @@
+[
+  {
+    "id": "T01",
+    "title": "Scaffold src/generate module + zod domain types",
+    "files": [
+      "src/generate/types.ts"
+    ],
+    "dependsOn": [],
+    "parallelGroup": 1,
+    "description": "Create the Phase 1 domain types as zod schemas: BrandBrief (brandName, brandAliases[], category, industryKey, positioning/wedge, icp/useCases[], productAttributes[], seedCompetitors[{name,aliases}], detectedLanguages[{code,weight,rationale}], confidence), IntentType enum (brand|category|comparison|alternative|useCase|attribute), FunnelStage enum (awareness|consideration|decision), IntentCell, DraftQuestion (superset of QuestionConfig: text, language, funnel_stage, density_tier, intentType, phrasingGroupId), GenOptions (requestedTotal default 120 clamped 50-200). DraftQuestion must be assignable to the existing QuestionSchema after stripping intentType/phrasingGroupId.",
+    "acceptanceCriteria": [
+      "All schemas exported with inferred TS types",
+      "DraftQuestion's {text,language,funnel_stage,density_tier} subset validates against template.schema.ts QuestionSchema",
+      "requestedTotal clamps to [50,200]",
+      "vitest type/parse smoke test passes"
+    ]
+  },
+  {
+    "id": "T02",
+    "title": "Add generateStructured() to GeminiAdapter (forced JSON)",
+    "files": [
+      "src/providers/gemini.ts",
+      "src/providers/types.ts"
+    ],
+    "dependsOn": [],
+    "parallelGroup": 1,
+    "description": "Extend the provider seam with generateStructured(req: {modelId, prompt, systemInstruction?, temperature, schema}) returning {ok, data, usage} | {ok:false, code}. Internally call client.models.generateContent with responseMimeType:'application/json' + responseSchema (reuse the zodToGeminiSchema helper pattern from mention.schema.ts), parse + safeParse against the caller's zod schema, map errors like _mapGenerateError. Returns NOT_CONFIGURED when no key. This is the ONLY structured-JSON seam Phase 1 uses; do NOT reuse generate() (which sends no responseSchema) or instantiate raw GoogleGenAI.",
+    "acceptanceCriteria": [
+      "GenerateStructuredRequest/Result added to types.ts",
+      "Method returns NOT_CONFIGURED when apiKey absent",
+      "On valid JSON, returns parsed+validated data + AdapterUsage with priceUsd tokens",
+      "On parse failure returns a typed error, does not throw",
+      "Unit test with a stubbed client covers ok + parse-fail + not_configured"
+    ]
+  },
+  {
+    "id": "T03",
+    "title": "URL fetcher seam with SSRF guard (read-only)",
+    "files": [
+      "src/generate/urlFetch.ts"
+    ],
+    "dependsOn": [],
+    "parallelGroup": 1,
+    "description": "UrlFetcher over Node 22 fetch(): GET-only (no other verb in the module). Controls: http(s)-only scheme allowlist; SSRF guard that resolves the host and REJECTS private/link-local/metadata ranges (10/8,172.16/12,192.168/16,127/8,169.254/16,::1,fc00::/7) before connect; AbortController 8s timeout; max-body ~1MB (truncate); descriptive User-Agent; redirect-follow <=3 and same-registrable-domain; best-effort robots/noai (record reason, do not hard-fail). Returns {ok, finalUrl, html, contentType} | {ok:false, reason}.",
+    "acceptanceCriteria": [
+      "Rejects http://169.254.169.254 and private IPs before any network call",
+      "Rejects non-http(s) schemes",
+      "Enforces timeout and byte cap",
+      "Caps redirects and blocks cross-registrable-domain redirects",
+      "No POST/PUT/PATCH/DELETE code path exists (read-only structural)",
+      "urlFetch-ssrf.test.ts covers each rejection"
+    ]
+  },
+  {
+    "id": "T04",
+    "title": "Migration 0006 part A: industry_template indexes + advisory cols",
+    "files": [
+      "src/db/migrations/0006_phase1_templatestore.sql"
+    ],
+    "dependsOn": [],
+    "parallelGroup": 1,
+    "description": "Plain transactional SQL (industry_template is a plain table). CREATE UNIQUE INDEX IF NOT EXISTS on (industry, version); CREATE UNIQUE INDEX IF NOT EXISTS ... ON industry_template (industry) WHERE status='active' (partial unique, at-most-one-active). ALTER TABLE ADD COLUMN IF NOT EXISTS source_url text, customer_slug text, generated_total int (all nullable/additive). Do NOT add an 'archived' status value or touch the status CHECK. Must be numbered 0006 (0005 is taken).",
+    "acceptanceCriteria": [
+      "File is 0006_*.sql, not 0005",
+      "Partial unique index on (industry) WHERE status='active' present",
+      "No status CHECK modification",
+      "All ADD COLUMN are IF NOT EXISTS + nullable",
+      "npm run migrate applies cleanly (or dry-validates) without touching hypertables"
+    ]
+  },
+  {
+    "id": "T05",
+    "title": "Migration 0006 part B: relax llm_call run_id/customer_id NOT NULL (.cjs)",
+    "files": [
+      "src/db/migrations/0006_phase1_llmcall.cjs",
+      "src/db/schema.ts"
+    ],
+    "dependsOn": [],
+    "parallelGroup": 1,
+    "description": "pgm.noTransaction() .cjs (mirrors 0004/0005 convention for hypertable DDL). ALTER TABLE llm_call ALTER COLUMN run_id DROP NOT NULL; ALTER COLUMN customer_id DROP NOT NULL. (run_id has no FK; customer_id has no FK — verified.) Keep purpose value 'generation' (no CHECK widen needed; document that llm_call has NO compression policy so this is metadata-only). Update schema.ts LlmCallTable so run_id/customer_id are nullable in the TS type; add industry_template advisory columns to its TS type. Provide exports.down restoring NOT NULL.",
+    "acceptanceCriteria": [
+      "File is 0006_*.cjs with pgm.noTransaction()",
+      "run_id and customer_id become nullable",
+      "schema.ts LlmCallTable run_id/customer_id typed nullable; insertLlmCall still compiles",
+      "Down migration restores NOT NULL",
+      "Comment documents llm_call has no compression policy (safe metadata-only ALTER)"
+    ]
+  },
+  {
+    "id": "T06",
+    "title": "Page extraction (readability heuristic)",
+    "files": [
+      "src/generate/extractPage.ts"
+    ],
+    "dependsOn": [
+      "T03"
+    ],
+    "parallelGroup": 2,
+    "description": "Given fetched HTML, extract structured signals: <title>, meta description, og:*/twitter:*, JSON-LD Organization/Product (name/sameAs/description), <h1..h3>, nav/anchor text, lang/hreflang codes. Strip script/style/nav/footer. Truncate combined text to ~6-8K chars. Pure function of HTML string (no IO) -> ExtractedSignals. Minimal regex/cheerio extractor; no heavy new dep.",
+    "acceptanceCriteria": [
+      "Pulls title/meta/og/JSON-LD/hreflang from a fixture HTML",
+      "Truncates to the char bound",
+      "Returns empty-but-valid signals for a JS-shell page (enables graceful degrade)",
+      "extractPage.test.ts passes on fixtures"
+    ]
+  },
+  {
+    "id": "T07",
+    "title": "Diagnosis prompt builder + BrandBrief inference",
+    "files": [
+      "src/generate/diagnosePrompt.ts",
+      "src/generate/diagnose.ts"
+    ],
+    "dependsOn": [
+      "T01",
+      "T02",
+      "T06"
+    ],
+    "parallelGroup": 3,
+    "description": "diagnosePrompt.ts: pure builder turning ExtractedSignals (+ optional industry) into the structured prompt instructing infer-only-from-evidence, mark low confidence, never invent metrics/superlatives, propose transliteration aliases for non-Latin markets. diagnose.ts: orchestrate fetch->extract->adapter.generateStructured(BrandBriefSchema) = ONE Gemini call; ledger the call (purpose='generation', run_id/customer_id may be null); on fetch/SPA/robots failure degrade to industry-only BrandBrief with a logged note. Off-site read-only end-to-end.",
+    "acceptanceCriteria": [
+      "Produces a valid BrandBrief from fixture signals (stubbed adapter)",
+      "Degrades to industry-only when fetch fails, no throw",
+      "Exactly one structured Gemini call on the happy path",
+      "Ledger row written via injected port",
+      "detectedLanguages carry weights derived from hreflang/content"
+    ]
+  },
+  {
+    "id": "T08",
+    "title": "IntentMatrix builder (pure coverage contract)",
+    "files": [
+      "src/generate/intentMatrix.ts"
+    ],
+    "dependsOn": [
+      "T01"
+    ],
+    "parallelGroup": 3,
+    "description": "PURE: given BrandBrief + GenOptions, build IntentCell[] across language x funnel_stage x intent_type. Language share proportional to detectedLanguages weight using the SAME ordering as sampling/languageWeight.ts sortByWeight. Within a language apply a fixed funnel mix (awareness 30 / consideration 35 / decision 35) biased toward category+comparison+alternative+useCase. Per-cell targetCount sums (with rounding) to the clamped requestedTotal. Deterministic + reproducible.",
+    "acceptanceCriteria": [
+      "Sum of cell targetCounts == clamped total (50-200)",
+      "Higher-weight languages receive more cells/counts",
+      "Ordering matches sortByWeight tie-breaking (weight desc, code asc)",
+      "No LLM/IO",
+      "intentMatrix.test.ts covers allocation + clamp + weight ordering"
+    ]
+  },
+  {
+    "id": "T09",
+    "title": "Density-tier mapping with hard core cap (pure)",
+    "files": [
+      "src/generate/densityMap.ts"
+    ],
+    "dependsOn": [
+      "T01",
+      "T08"
+    ],
+    "parallelGroup": 4,
+    "description": "PURE deterministic map (intent_type, funnel_stage, language weight, phrasing-sibling flag) -> density_tier. Decision-stage brand/comparison/alternative/category in top-weight languages -> core; consideration/useCase/mid -> secondary; awareness/attribute/low-weight + paraphrase siblings -> secondary or longtail. Enforce a HARD cap: core <=25% of total AND an absolute max core-count per language; overflow demotes deterministically to secondary. Lead phrasing variant may be core; siblings default secondary (NOT all longtail).",
+    "acceptanceCriteria": [
+      "Core share never exceeds the cap on any input set",
+      "Tiers are reproducible for identical input",
+      "Paraphrase siblings are not all forced to longtail",
+      "densityMap.test.ts asserts core minority + cap enforcement"
+    ]
+  },
+  {
+    "id": "T10",
+    "title": "Native multilingual generation + per-language allocation",
+    "files": [
+      "src/generate/generationPrompt.ts",
+      "src/generate/generateQuestions.ts",
+      "src/generate/multilingual.ts"
+    ],
+    "dependsOn": [
+      "T01",
+      "T02",
+      "T08",
+      "T09"
+    ],
+    "parallelGroup": 4,
+    "description": "generationPrompt.ts: pure per-language native prompt that passes intent DESCRIPTORS (intentType, funnelStage, brand, category, wedge, script-appropriate competitor names) and FORBIDS translating English. multilingual.ts: for each language one adapter.generateStructured() call (batched across that language's cells), over-generate ~1.3x cell target, tag each output with language/funnel_stage/intentType/phrasingGroupId, apply densityMap. Flag low-resource languages (tl,vi,th) needs_native_review. Ledger each call. Reuse response_cache by (industryKey+language+intentCell) hash.",
+    "acceptanceCriteria": [
+      "One generation call per language (call count ~= L)",
+      "Prompts contain intent descriptors, never English question strings",
+      "Over-generation capped at 1.3x",
+      "needs_native_review flag set for configured low-resource langs",
+      "Cache lookup/store wired through the existing response_cache seam",
+      "multilingual-alloc.test.ts verifies per-language counts honor weights"
+    ]
+  },
+  {
+    "id": "T11",
+    "title": "Dedup (normalized-exact + codepoint n-gram, CJK-safe)",
+    "files": [
+      "src/generate/dedup.ts"
+    ],
+    "dependsOn": [
+      "T01"
+    ],
+    "parallelGroup": 4,
+    "description": "PURE. Layer 1: NFC+lowercase+diacritic-fold+collapse-whitespace+strip-trailing-punct exact-collision drop (pre-empts question UNIQUE(customer_id,text,language)). Layer 2: per-language near-dup via codepoint 3-gram Jaccard (NOT token/word Jaccard — must work for ja/ko/zh/th); within a cluster keep the most natural representative + bounded siblings from distinct phrasingGroupIds. Cross-language dedup NOT applied. Stable ordering. NO embeddings.",
+    "acceptanceCriteria": [
+      "Collapses CJK restatements on emora ja/ko/zh fixtures",
+      "Preserves genuine phrasing variants (distinct phrasingGroupId)",
+      "Keeps en and ja phrasings of the same intent (no cross-language collapse)",
+      "Exact normalization prevents UNIQUE collisions",
+      "dedup-cjk.test.ts passes on non-space-delimited fixtures"
+    ]
+  },
+  {
+    "id": "T12",
+    "title": "Question guardrails (non-leading / neutral, pure)",
+    "files": [
+      "src/generate/questionGuards.ts"
+    ],
+    "dependsOn": [
+      "T01"
+    ],
+    "parallelGroup": 4,
+    "description": "PURE gate fold (mirrors Phase 0 runGates pattern). Reject: brand name/alias in non-brand-intent questions (brand-leading bias); marketing copy; yes/no closed forms; keyword-salad (unless deliberate keyword variant); superlative/unverifiable-claim language (§7#2). Allow brand naming only when intentType='brand'. Returns kept[] + rejected[{reason}].",
+    "acceptanceCriteria": [
+      "'why is EMORA the best app' rejected; 'is EMORA free' (brand intent) allowed",
+      "Superlative/claim phrasing rejected",
+      "Yes/no closed forms rejected",
+      "Pure, deterministic",
+      "questionGuards.test.ts covers each rule"
+    ]
+  },
+  {
+    "id": "T13",
+    "title": "Template repo methods (additive)",
+    "files": [
+      "src/db/repo.ts"
+    ],
+    "dependsOn": [
+      "T04"
+    ],
+    "parallelGroup": 2,
+    "description": "Add (no edits to existing signatures): getIndustryTemplate(id), listIndustryTemplates(industry), getLatestActiveTemplate(industry), nextTemplateVersion(industry) (max(version)+1), updateTemplateStatus(id,status,reviewedBy) (sets reviewed_by/reviewed_at on 'reviewed'), demoteActiveTemplate(industry) (active->reviewed, used inside activation txn). Reuse the JSON.stringify+::jsonb cast pattern for any jsonb reads/writes.",
+    "acceptanceCriteria": [
+      "All new functions typed against schema.ts",
+      "updateTemplateStatus stamps reviewed_by/reviewed_at only on 'reviewed'/'active'",
+      "nextTemplateVersion returns max+1 (1 when none)",
+      "No existing function signature changed",
+      "Repo unit/integration test covers version bump + status update"
+    ]
+  },
+  {
+    "id": "T14",
+    "title": "qgen budget preflight (global cap + per-run ceiling)",
+    "files": [
+      "src/cost/qgenBudget.ts"
+    ],
+    "dependsOn": [
+      "T05"
+    ],
+    "parallelGroup": 2,
+    "description": "NEW preflight for onboarding-time generation that does NOT depend on a customer/budget row. Reads env GLOBAL_WEEKLY_USD_CAP/GLOBAL_MONTHLY_USD_CAP (exist in env.ts) for a coarse global gate, plus a process-local USD accumulator that sums actual per-call usage during the run and aborts when a per-run ceiling (default ~$0.50, configurable) is exceeded. Does NOT re-read cost_daily mid-run (CAGG has 1-hour end_offset, cannot see in-flight spend).",
+    "acceptanceCriteria": [
+      "Works with no customer/budget row present",
+      "Aborts the run when the per-run USD ceiling is exceeded (accumulator-based)",
+      "Reads GLOBAL_*_USD_CAP from env",
+      "Does not call sumCostSince for the in-flight run",
+      "qgenBudget.test.ts covers ceiling abort + global gate"
+    ]
+  },
+  {
+    "id": "T15",
+    "title": "Assemble draft template + persist as industry_template draft",
+    "files": [
+      "src/generate/assembleTemplate.ts"
+    ],
+    "dependsOn": [
+      "T07",
+      "T10",
+      "T11",
+      "T12",
+      "T13"
+    ],
+    "parallelGroup": 5,
+    "description": "Combine deduped+guarded DraftQuestion[] and seedCompetitors into {questions, competitors} (questions JSONB carries full provenance: intentType, phrasingGroupId, source, brief snapshot, generated_total, needs_native_review). RE-VALIDATE the canonical 4-field subset of every question against QuestionSchema and competitors against CompetitorSchema BEFORE insert. Write via the EXISTING repo.insertIndustryTemplate(status='draft'); set source_url/customer_slug/generated_total advisory cols. Generator NEVER emits reviewed/active.",
+    "acceptanceCriteria": [
+      "Inserted row is status='draft' with valid JSONB",
+      "Every question's canonical subset passes QuestionSchema before insert",
+      "Provenance fields present in JSONB but absent from canonical subset",
+      "assemble-schema.test.ts asserts schema validity of emitted questions"
+    ]
+  },
+  {
+    "id": "T16",
+    "title": "Materialize active template -> CustomerTemplate + YAML emit + upsert",
+    "files": [
+      "src/generate/materialize.ts"
+    ],
+    "dependsOn": [
+      "T15"
+    ],
+    "parallelGroup": 6,
+    "description": "Take an ACTIVE industry_template + customer context (slug, brand, languages, budget from BrandBrief or existing customer) -> build a full CustomerTemplate, strip questions to the 4 canonical fields. Emit ONE authoritative config/customers/<slug>.yaml, then call loadTemplate(yaml) so DB rows come from reading that YAML (single source of truth; no separate upsert + re-read). Refuse any template whose status != 'active' (structural §5.5). Idempotent (re-materialize = no-op upserts).",
+    "acceptanceCriteria": [
+      "Refuses non-active templates",
+      "Emits exactly one YAML; DB rows produced by loadTemplate reading it (no double-write)",
+      "Resulting question rows readable by findActiveQuestions with correct tiers/langs",
+      "Re-running is idempotent",
+      "materialize-roundtrip.test.ts: generated -> YAML -> loadTemplate -> question rows round-trip"
+    ]
+  },
+  {
+    "id": "T17",
+    "title": "CLI: diagnose-url",
+    "files": [
+      "src/cli/diagnoseUrl.ts",
+      "package.json"
+    ],
+    "dependsOn": [
+      "T07",
+      "T14"
+    ],
+    "parallelGroup": 6,
+    "description": "`npm run diagnose-url -- --url <u> [--customer <slug>] [--industry <i>]`: run qgenBudget preflight, then diagnose.ts; print BrandBrief JSON for human sanity check; carry forward as seed if --customer given. Add the npm script. Graceful degrade + clear errors when GEMINI_API_KEY absent.",
+    "acceptanceCriteria": [
+      "Prints valid BrandBrief JSON",
+      "Degrades to industry-only on fetch failure",
+      "Respects per-run budget ceiling",
+      "npm script 'diagnose-url' added",
+      "Exits non-zero with a clear message when key missing and no industry fallback"
+    ]
+  },
+  {
+    "id": "T18",
+    "title": "CLI: gen-template rewrite (full pipeline -> draft)",
+    "files": [
+      "src/cli/genTemplate.ts",
+      "package.json"
+    ],
+    "dependsOn": [
+      "T08",
+      "T09",
+      "T10",
+      "T11",
+      "T12",
+      "T15",
+      "T17"
+    ],
+    "parallelGroup": 7,
+    "description": "Rewrite genTemplate.ts: accept --url and/or --industry [--customer] [--total]. Run diagnose (if --url) -> intentMatrix -> multilingual generation -> dedup -> guards -> densityMap -> assembleTemplate (status='draft'). Keep the existing 'gen-template' script contract (writes draft). Route all Gemini through the adapter (no raw GoogleGenAI). Print the new template id + summary.",
+    "acceptanceCriteria": [
+      "--industry-only path works without a URL",
+      "--url path runs the full diagnosis-seeded pipeline",
+      "Output row is status='draft'",
+      "No raw GoogleGenAI instantiation remains in the file",
+      "genTemplate.integration.test.ts covers both input modes (stubbed adapter)"
+    ]
+  },
+  {
+    "id": "T19",
+    "title": "CLI: review-template lifecycle (draft->reviewed->active, version-on-edit)",
+    "files": [
+      "src/cli/reviewTemplate.ts",
+      "package.json"
+    ],
+    "dependsOn": [
+      "T13",
+      "T16"
+    ],
+    "parallelGroup": 7,
+    "description": "`npm run review-template -- --id <uuid> --action reviewed|active --by <email>`. reviewed: only from draft, stamps reviewer. active: requires status='reviewed' (refuse from draft); inside one transaction demote the prior active for that industry to 'reviewed' (partial-unique-safe), set this to active, then invoke materialize. Support an --edit flow that imports an edited JSONB as a NEW draft version (version=max+1) with re-validation — never mutate an active/reviewed row in place.",
+    "acceptanceCriteria": [
+      "Refuses active-directly-from-draft",
+      "Activation demotes prior active in the same txn (partial unique index never violated)",
+      "Edit path creates a new draft version, leaves prior rows immutable",
+      "Re-validates payload against schema on import + transition",
+      "Activation triggers materialize",
+      "templateLifecycle.test.ts covers transitions + version bump + immutability"
+    ]
+  },
+  {
+    "id": "T20",
+    "title": "Optional API routes (Fastify)",
+    "files": [
+      "src/api/routes/generate.ts"
+    ],
+    "dependsOn": [
+      "T17",
+      "T18",
+      "T19"
+    ],
+    "parallelGroup": 8,
+    "description": "Mirror the existing Fastify server.ts style: POST /diagnose-url, POST /templates (draft), PATCH /templates/:id/review, POST /templates/:id/activate. Thin handlers delegating to the same services the CLIs use. Same budget preflight + structural §5.5 gates apply.",
+    "acceptanceCriteria": [
+      "Routes delegate to shared services (no logic duplication)",
+      "Activate route enforces reviewed->active",
+      "Diagnose route is read-only",
+      "Handler-level test (light) verifies status gating"
+    ]
+  },
+  {
+    "id": "T21",
+    "title": "Integration + proof-path tests",
+    "files": [
+      "test/diagnose.integration.test.ts",
+      "test/genTemplate.integration.test.ts",
+      "test/materialize-roundtrip.test.ts",
+      "test/templateLifecycle.test.ts"
+    ],
+    "dependsOn": [
+      "T16",
+      "T18",
+      "T19"
+    ],
+    "parallelGroup": 8,
+    "description": "End-to-end (stubbed Gemini adapter, real schema validation): diagnose-url -> gen-template(draft) -> review reviewed -> review active(materialize+YAML) -> assert question/competitor rows exist and validate; assert findActiveQuestions returns generated rows with correct density tiers/languages so the Phase 0 planner would consume them unchanged. Verify the single-YAML source-of-truth (no double-write) and the structural §5.5 gate (materialize refuses non-active).",
+    "acceptanceCriteria": [
+      "Full proof path runs with a stubbed adapter and a test DB (or repo stubs)",
+      "Generated rows pass CustomerTemplateSchema/QuestionSchema",
+      "findActiveQuestions returns the materialized questions",
+      "No Phase 0 read-side module is modified to make tests pass",
+      "Core-tier share within the densityMap cap end-to-end"
+    ]
+  }
+]

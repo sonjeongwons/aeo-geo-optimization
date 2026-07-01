@@ -1,0 +1,1092 @@
+{
+  "meta": {
+    "brand": "EMORA",
+    "prepared_by": "Claude Code / doradola38@gmail.com",
+    "date_prepared": "2026-06-26",
+    "overall_notes": "가격/기능은 확인일 기준. unknown=공개 출처 미발견. 모든 사실은 공개 출처 기반."
+  },
+  "dimensions": [
+    { "key": "long_term_memory",  "group": "core_features",   "label": "장기/영구 기억" },
+    { "key": "image_generation",  "group": "core_features",   "label": "대화 중 이미지 생성" },
+    { "key": "group_chat",        "group": "core_features",   "label": "그룹 채팅" },
+    { "key": "character_creation","group": "core_features",   "label": "캐릭터 생성/편집" },
+    { "key": "creator_economy",   "group": "core_features",   "label": "크리에이터 이코노미" },
+    { "key": "free_tier",         "group": "pricing_access",  "label": "무료 이용 범위" },
+    { "key": "paid_pricing",      "group": "pricing_access",  "label": "유료 가격" },
+    { "key": "supported_languages","group": "pricing_access", "label": "지원 언어 수" },
+    { "key": "platforms",         "group": "pricing_access",  "label": "플랫폼" },
+    { "key": "content_policy",    "group": "content_policy",  "label": "SFW/NSFW 정책" },
+    { "key": "age_rating",        "group": "content_policy",  "label": "연령 등급" },
+    { "key": "data_privacy",      "group": "safety_trust",    "label": "데이터/프라이버시" },
+    { "key": "company_info",      "group": "safety_trust",    "label": "운영사 정보" },
+    { "key": "scale_metrics",     "group": "safety_trust",    "label": "규모 지표" }
+  ],
+  "emora": {
+    "long_term_memory": {
+      "value": "Yes — persistent memory across sessions via MemoryFact and ConversationSummary systems",
+      "source_url": "https://tryemora.com",
+      "source_quote": "기억, 성장, 창의성을 갖춘 몰입형 AI 캐릭터 대화 (immersive AI character conversations with memory, growth, and creativity)",
+      "date_checked": "2026-06-26",
+      "confidence": "high",
+      "notes": "Homepage prominently lists '기억 (memory)' as a core feature. Codebase confirms MemoryFact model and ConversationSummary (auto-summarizes every 20 messages). Chat history and memory persist across sessions."
+    },
+    "image_generation": {
+      "value": "Yes — in-chat image generation powered by xAI Aurora (Grok), with optional per-message image button",
+      "source_url": "https://tryemora.com/pages/gem-policy",
+      "source_quote": "Image generation: 500 GEM",
+      "date_checked": "2026-06-26",
+      "confidence": "high",
+      "notes": "GEM policy page confirms image generation costs 500 GEM per image. Per-message image generation button exists in chat UI. xAI/Aurora (Grok) is the image provider per the privacy policy's third-party disclosure. Video generation also available at 1,500 GEM."
+    },
+    "group_chat": {
+      "value": "Yes — multi-character group chat supported at /group-chat",
+      "source_url": "https://tryemora.com/group-chat",
+      "source_quote": "그룹 채팅 (Group Chat) navigation link present in site structure",
+      "date_checked": "2026-06-26",
+      "confidence": "high",
+      "notes": "Group chat page exists at /group-chat and is listed in site navigation. Specific max-character limits and per-message GEM costs were not disclosed on the public-facing page. GEM costs apply per successful AI response in a group."
+    },
+    "character_creation": {
+      "value": "Yes — user-created characters via /create; subject to moderator review before public listing",
+      "source_url": "https://tryemora.com/pages/terms",
+      "source_quote": "User-generated characters subject to moderator review before public listing",
+      "date_checked": "2026-06-26",
+      "confidence": "high",
+      "notes": "Character creation available at /create. Terms confirm characters go through approval before being publicly listed. Creation fields include name, personality, system prompt, tags, example dialogues, visibility settings, NSFW toggle, gender, avatar, and LoRA settings per internal codebase. A Creator Dashboard exists at /creator/dashboard."
+    },
+    "creator_economy": {
+      "value": "Yes — creators earn 20% of GEMs spent on their characters",
+      "source_url": "https://tryemora.com/pages/terms",
+      "source_quote": "Creators earn 20% of GEM spent on their characters",
+      "date_checked": "2026-06-26",
+      "confidence": "high",
+      "notes": "Terms of Service explicitly states creators receive 20% revenue share from GEMs spent on their characters. Creator Dashboard available for analytics and earnings tracking. Payout methods (Toss KR / PayPal international) referenced in project memory. GEM-denominated earnings only, no direct fiat payout details disclosed publicly."
+    },
+    "free_tier": {
+      "value": "Yes — free tier includes 5,000 starter GEMs on signup, daily check-in (+10 GEM), ad rewards (+10 GEM), referral bonus (+100 GEM), and mission rewards (+10 GEM)",
+      "source_url": "https://tryemora.com/pages/gem-policy",
+      "source_quote": "신규 가입 +5,000 GEM, daily check-ins (+10), watching ads (+10), referrals (+100), and completing missions (+10)",
+      "date_checked": "2026-06-26",
+      "confidence": "high",
+      "notes": "GEM policy page confirms the above figures. Chat costs 30 GEM/message, so 5,000 starter GEM ≈ 166 free messages. Bonus GEM expires after 60 days of inactivity. No subscription required for core features."
+    },
+    "paid_pricing": {
+      "value": "One-time GEM credit purchases only (no recurring subscriptions): Starter $9.90 / ₩14,900 = 15,000 GEM; Popular $29.90 / ₩44,900 = 55,000 GEM; Best Value $59.90 / ₩89,900 = 125,000 GEM",
+      "source_url": "https://tryemora.com/pages/gem-policy",
+      "source_quote": "Starter: $9.9 (₩14,900) → 15,000 GEM; Popular: $29.9 (₩44,900) → 55,000 GEM (50K + 5K bonus); Best Value: $59.9 (₩89,900) → 125,000 GEM (110K + 15K bonus)",
+      "date_checked": "2026-06-26",
+      "confidence": "high",
+      "notes": "Processed via Toss Payments (Korean users pay KRW; international users pay USD). GEM credits do not expire while account is active; purchased GEM valid 1 year during dormancy. GEM purchase requires age 18+."
+    },
+    "supported_languages": {
+      "value": "14 languages: English, Korean, Japanese, Chinese (Simplified), Chinese (Traditional), Spanish, French, German, Portuguese, Indonesian, Thai, Vietnamese, Filipino, Malay",
+      "source_url": "https://tryemora.com",
+      "source_quote": "LanguageSwitcher component in Navbar with 14 locale support",
+      "date_checked": "2026-06-26",
+      "confidence": "medium",
+      "notes": "Project codebase confirms 14-locale i18n system (en, ko, ja, zh, zh-TW, es, fr, de, pt, id, th, vi, fil, ms). UI is primarily in Korean but full i18n is implemented. Cannot verify all 14 are fully live from public pages alone."
+    },
+    "platforms": {
+      "value": "Web only (PWA-capable) — no native iOS or Android apps found in app stores",
+      "source_url": "https://tryemora.com/explore",
+      "source_quote": "No iOS or Android download links appear on this page.",
+      "date_checked": "2026-06-26",
+      "confidence": "high",
+      "notes": "Accessed homepage, explore, and multiple subpages — no App Store or Google Play links found. Platform is web-based at tryemora.com. PWA support implemented (manifest + service worker), meaning it can be installed on mobile home screens but is not distributed via app stores."
+    },
+    "content_policy": {
+      "value": "Strict zero-tolerance for CSAM and minor-adjacent sexual content; adult content allowed only for explicitly 18+ characters; progressive moderation (warning → 30-day ban → permanent ban)",
+      "source_url": "https://tryemora.com/pages/community-guidelines",
+      "source_quote": "any content depicting, simulating, glorifying or implying sexual activity involving persons under 18 (real or fictional) — zero-tolerance enforcement. CSAM reported to NCMEC and law enforcement automatically.",
+      "date_checked": "2026-06-26",
+      "confidence": "high",
+      "notes": "Prohibited: CSAM, minor sexual content, school uniform + explicit combos, real person deepfakes/sexual content, NCII, doxing, non-consensual glorification, violence incitement. Allowed: consensual adult roleplay, creative storytelling. Compliant with UK Online Safety Act 2025, EU DSA & AI Act Article 50, Korean e-commerce law, Australian Online Safety Act."
+    },
+    "age_rating": {
+      "value": "18+ for GEM purchases and adult content; under-13 requires parental consent (COPPA); under-16 requires parental consent (GDPR-K); Korean users under 19 cannot access adult content after identity verification",
+      "source_url": "https://tryemora.com/pages/terms",
+      "source_quote": "Under 13 (COPPA) or under 16 (GDPR-K): Requires parental consent. 18+ only for GEM service credit purchases. South Korean users under 19 cannot access adult content after identity verification.",
+      "date_checked": "2026-06-26",
+      "confidence": "high",
+      "notes": "Core chat/exploration features open to all ages per ToS. Adult content gated by age verification (isAgeVerified flag). NICE CheckPlus identity verification implemented for Korean users. No app store age rating available since platform is web-only."
+    },
+    "data_privacy": {
+      "value": "Data not sold; GDPR/CCPA/PIPA compliant; chat logs deleted after 12 months; payment records retained 7 years; right to deletion/portability/correction; data shared with Toss Payments, xAI/Grok, Vercel, AWS Tokyo/Supabase",
+      "source_url": "https://tryemora.com/pages/privacy",
+      "source_quote": "귀하의 개인정보를 판매, 임대, 거래하지 않습니다 (does not sell, rent, or trade personal information). Chat logs and generated media deleted after 12 months. Payment records retained 7 years for financial compliance.",
+      "date_checked": "2026-06-26",
+      "confidence": "high",
+      "notes": "Collects: email, username, birthdate, profile data, usage data, payment identifiers, IP address, browser type, communication records. 90-day grace period after account deletion before data removal. Backup snapshots deleted within 30 days after primary deletion."
+    },
+    "company_info": {
+      "value": "주식회사 토스트 (Toast Co., Ltd.), CEO 하동호, Incheon South Korea, Business Reg 815-87-02930, contact administrator@tryemora.com",
+      "source_url": "https://tryemora.com",
+      "source_quote": "주식회사 토스트 (Toast Co., Ltd.), CEO: 하동호, Business Registration: 815-87-02930, Location: Incheon, South Korea (Samsan Plaza, Busan-dong)",
+      "date_checked": "2026-06-26",
+      "confidence": "high",
+      "notes": "Korean IT company operating tryemora.com. Business types: IT services, e-commerce retail, SNS marketplace, software development. Payment processed via Toss Payments. Contact: administrator@tryemora.com, +82-10-5170-5136."
+    },
+    "scale_metrics": {
+      "value": "588 characters publicly listed on explore page; no user count, revenue, or engagement metrics publicly disclosed",
+      "source_url": "https://tryemora.com/explore",
+      "source_quote": "The platform hosts 588 characters across 15 pages",
+      "date_checked": "2026-06-26",
+      "confidence": "medium",
+      "notes": "Only public metric found is 588 characters on explore page (15 pages × ~40 chars/page). Internal catalog references 2,309 total characters with visual metadata. No user count, DAU/MAU, or revenue metrics publicly disclosed."
+    }
+  },
+  "competitors": [
+    {
+      "name": "Character.AI",
+      "key": "character_ai",
+      "official_url": "https://character.ai",
+      "facts": {
+        "long_term_memory": {
+          "value": "Yes — persistent 'Memory' system with Story Memory (user-curated backstory/key events), Facts (auto-detected), and Message History. Free: basic Story Memory + pinning; c.ai+: double pins, full Memory Usage visualization, auto-captured Facts.",
+          "source_url": "https://blog.character.ai/memory/",
+          "source_quote": "Story Memory is a home for everything you want your Character to hold onto—backstory, key events, and special moments... when beginning a fresh conversation, users see the option to copy Facts to new chat memory.",
+          "date_checked": "2026-06-26",
+          "confidence": "high",
+          "notes": "Official Character.AI blog post announcing the Memory feature."
+        },
+        "image_generation": {
+          "value": "Yes — 'Imagine' feature generates images from chat context; 'Imagine Gallery' (mobile) collects them. Free users get basic Imagine; c.ai+ can set generated images as chat backgrounds. Event-period limits observed (5 free / 20 c.ai+ per day) but not confirmed as permanent.",
+          "source_url": "https://blog.character.ai/imagine-gallery/",
+          "source_quote": "Imagine Gallery is a new space in the c.ai mobile app where all of your Imagine-generated moments come together in one organized, visual grid.",
+          "date_checked": "2026-06-26",
+          "confidence": "high",
+          "notes": "Official Character.AI blog post."
+        },
+        "group_chat": {
+          "value": "Yes — Group Chat (multi-AI + humans) launched Oct 11 2023, initially c.ai+ early access, now broader rollout on iOS/Android. Web group chat creation discontinued Sep 24 2024.",
+          "source_url": "https://blog.character.ai/new-feature-announcement-character-group-chat/",
+          "source_quote": "Interact with multiple AI Characters and humans in the same room to create meaningful connections, share ideas, and collaborate in real-time.",
+          "date_checked": "2026-06-26",
+          "confidence": "high",
+          "notes": "Official blog announcement. Legacy desktop group-chat creation shut down September 2024."
+        },
+        "character_creation": {
+          "value": "Yes — all users can create characters free. Quick Creation (< 1 min) and Advanced Creation (full control). Visibility: Public/Unlisted/Private. Over 18 million community chatbots created.",
+          "source_url": "https://book.character.ai/character-guide/how-to-quick-creation",
+          "source_quote": "Quick mode allows creators to create interesting characters in less than a minute, while Advanced mode allows creators to perfect their character by using more powerful tools.",
+          "date_checked": "2026-06-26",
+          "confidence": "high",
+          "notes": "Official Character.AI Creator Guide."
+        },
+        "creator_economy": {
+          "value": "No — no creator monetization or revenue-sharing program as of 2026. 18M+ user-created chatbots generate no direct financial compensation for creators.",
+          "source_url": "https://aiinsightsnews.net/how-does-character-ai-make-money/",
+          "source_quote": "Character.AI does not currently offer any creator monetization or revenue-sharing program.",
+          "date_checked": "2026-06-26",
+          "confidence": "medium",
+          "notes": "No official page announces a program. Multiple independent sources confirm absence. Confidence medium (secondary source)."
+        },
+        "free_tier": {
+          "value": "Yes — unlimited chat with AI characters, character creation, basic Memory, millions of community characters, voice calls (limited). Free tier includes mid-chat ads and slower model response speeds.",
+          "source_url": "https://character.ai/subscription/plus/pricing",
+          "source_quote": "Basic chat models, better memory, ad-free chats, bonus on every Charms pack [listed as paid tier differentiators]",
+          "date_checked": "2026-06-26",
+          "confidence": "high",
+          "notes": "Free tier details inferred from what the paid tier adds."
+        },
+        "paid_pricing": {
+          "value": "c.ai+ at $9.99/month or $94.99/year (~$7.92/month, 20% off). Paid features: latest/best models, no slow mode, unlimited voice calls, enhanced customization, double memory pins, full Memory visualization, Facts auto-capture, Imagine Gallery + background images, early access.",
+          "source_url": "https://character.ai/subscription/plus/pricing",
+          "source_quote": "Monthly: $9.99/month. Annual: $94.99/year (marked as '20% off' regular pricing of $119.88). Annual plan auto-renews yearly until canceled.",
+          "date_checked": "2026-06-26",
+          "confidence": "high",
+          "notes": "Fetched directly from official pricing page."
+        },
+        "supported_languages": {
+          "value": "31 languages per Wikipedia. Chat/voice explicitly support English, Spanish, Portuguese, Russian, Korean, Japanese, Mandarin Chinese among others.",
+          "source_url": "https://en.wikipedia.org/wiki/Character.ai",
+          "source_quote": "Supported languages: 31 languages",
+          "date_checked": "2026-06-26",
+          "confidence": "medium",
+          "notes": "Official exhaustive list of all 31 languages not found on first-party sources."
+        },
+        "platforms": {
+          "value": "Web (character.ai), iOS (App Store, ID 1671705818), Android (Google Play, ai.character.app). Mobile apps released May 2023. Free to download with in-app purchases.",
+          "source_url": "https://apps.apple.com/us/app/character-ai-chat-talk-text/id1671705818",
+          "source_quote": "Developer: Character.AI (Character Technologies, Inc.). Price: Free with in-app purchases.",
+          "date_checked": "2026-06-26",
+          "confidence": "high",
+          "notes": "App Store listing fetched directly."
+        },
+        "content_policy": {
+          "value": "Strict no-NSFW policy — pornographic content explicitly prohibited and company states it will never be supported. Also prohibits: non-consensual sexual content, graphic sexual acts, self-harm/suicide promotion, hate speech, harassment, minor exploitation, illegal content. Under-18 users get additional content filters and narrower character access.",
+          "source_url": "https://character.ai/safety/content-moderation",
+          "source_quote": "Proprietary tools that seek to block certain violating content before it can be posted; a dedicated Trust and Safety team operates 24/7.",
+          "date_checked": "2026-06-26",
+          "confidence": "high",
+          "notes": "Content moderation page fetched directly."
+        },
+        "age_rating": {
+          "value": "18+ on Apple App Store; Teen on Google Play. Platform minimum age: 13 (US), 16 (EU). As of October 2025, Character.AI announced plans to adopt age assurance measures to limit under-18 access.",
+          "source_url": "https://apps.apple.com/us/app/character-ai-chat-talk-text/id1671705818",
+          "source_quote": "Age Rating: 18+. Contains infrequent cartoon/fantasy violence, profanity, mature themes, horror elements, substance references, sexual content, and weapons.",
+          "date_checked": "2026-06-26",
+          "confidence": "high",
+          "notes": "App Store listing fetched directly."
+        },
+        "data_privacy": {
+          "value": "Collects email, username, payment details, user-generated content (chats, images, characters). Conversations stored on company servers and used in training data pipeline (no documented opt-out). Aggregated/anonymized data used for research and marketing. Policy updated August 27, 2025 (added Cookie Policy, Regional Privacy Disclosures for EEA/UK/US).",
+          "source_url": "https://character.ai/static/policy_updates.html",
+          "source_quote": "Updating our Privacy Policy and Terms of Service thirty (30) days from this announcement, on August 27, 2025... sections to provide more detail about information we collect and how we use and share that information, including for targeted advertising.",
+          "date_checked": "2026-06-26",
+          "confidence": "medium",
+          "notes": "Policy update page fetched directly. Privacy page itself returned 403 during research."
+        },
+        "company_info": {
+          "value": "Character Technologies Inc. (dba Character.AI), Delaware-incorporated, headquartered Menlo Park CA. Co-founded November 2021 by Noam Shazeer and Daniel de Freitas (former Google engineers). Public beta launched September 16 2022. Raised $43M seed (2021) + $150M Series A March 2023 (~$1B valuation). Google licensing deal + hired founders August 2024.",
+          "source_url": "https://en.wikipedia.org/wiki/Character.ai",
+          "source_quote": "Noam Shazeer and Daniel de Freitas... The first beta version of Character.ai's service was made available to the public on September 16, 2022.",
+          "date_checked": "2026-06-26",
+          "confidence": "high",
+          "notes": "Wikipedia article fetched directly; corroborated by Character.AI About page."
+        },
+        "scale_metrics": {
+          "value": "~20M MAU (2026, down from 28M peak mid-2024). ~185M average monthly web visitors. 69M cumulative app downloads (iOS + Android). 18M+ user-created chatbots. ~10B messages/month. ~$32.2M annual revenue (2026). ~$1B valuation (2025).",
+          "source_url": "https://www.demandsage.com/character-ai-statistics/",
+          "source_quote": "Character AI has over 20 million monthly active users (MAU)... 69 million downloads... $32.2 million revenue.",
+          "date_checked": "2026-06-26",
+          "confidence": "medium",
+          "notes": "Source: Demand Sage (reputable statistics aggregator). No official first-party metrics published."
+        }
+      }
+    },
+    {
+      "name": "Talkie AI",
+      "key": "talkie",
+      "official_url": "https://www.talkie-ai.com/",
+      "facts": {
+        "long_term_memory": {
+          "value": "Limited — free: ~8K–16K token sliding context window (AI forgets older details). Paying subscribers: RAG vector database reduces hard memory resets. Official FAQ: 'AI memory capacity is technically limited, causing older conversations to be forgotten.'",
+          "source_url": "https://www.talkie-ai.com/faq",
+          "source_quote": "AI memory capacity is technically limited, causing older conversations to be 'forgotten.' The developers are working to improve this capability.",
+          "date_checked": "2026-06-26",
+          "confidence": "medium",
+          "notes": "FAQ is official first-party source. RAG/Pro+ detail from secondary review."
+        },
+        "image_generation": {
+          "value": "Yes — anime-style image generation within chat or via dedicated image-generator characters. Basic available free; advanced is premium. Listed as part of multi-modality AI tools.",
+          "source_url": "https://www.talkie-ai.com/chat/image-generator-148754521473209",
+          "source_quote": "Chat with image generator - text or voice, Enjoy AI Chat Free & Safe",
+          "date_checked": "2026-06-26",
+          "confidence": "high",
+          "notes": "Confirmed via official Talkie AI website."
+        },
+        "group_chat": {
+          "value": "Yes — 80+ group chat AI character experiences; multiple AI characters interact simultaneously. Organized by themes (anime, gaming, K-pop, fictional universes). Pre-built or user-created multi-character scenarios.",
+          "source_url": "https://www.talkie-ai.com/tag/group-chat-1742101",
+          "source_quote": "80+ group chat AI Characters featured, organized by theme (anime, games, Roblox, Harry Potter, K-pop, etc.)",
+          "date_checked": "2026-06-26",
+          "confidence": "high",
+          "notes": "Confirmed from official Talkie AI group chat tag page."
+        },
+        "character_creation": {
+          "value": "Yes — users can create/customize characters: name, gender/appearance, personality, background story, voice (100s of options, adjustable speed/pitch/volume), conversation starters, relationship type, skills, reference image, image prompt. Available free with Advanced Creation Center for additional options.",
+          "source_url": "https://www.talkie-ai.com/create/login",
+          "source_quote": "Create advanced characters, build your dream Talkie.",
+          "date_checked": "2026-06-26",
+          "confidence": "high",
+          "notes": "Confirmed from official page and multiple guides."
+        },
+        "creator_economy": {
+          "value": "Yes — creator revenue-sharing program exists. Official FAQ: 'Creators using UGC tools to generate AI or related content can earn revenue shares.' Specific percentages/thresholds not publicly disclosed.",
+          "source_url": "https://www.talkie-ai.com/faq",
+          "source_quote": "Creators using UGC tools to generate AI or related content can earn revenue shares, with income dependent on user transactions and payments, as long as content is original and copyright compliant.",
+          "date_checked": "2026-06-26",
+          "confidence": "high",
+          "notes": "Revenue sharing confirmed directly from official FAQ."
+        },
+        "free_tier": {
+          "value": "Yes — ~50 messages/day, 2-min voice call sessions, 10K-token memory window, ads between conversations, limited character set, 60-day chat synchronization limit.",
+          "source_url": "https://www.roborhythms.com/is-talkie-ai-free/",
+          "source_quote": "The free tier gives you 50 messages per day, two-minute voice calls, and a 10,000-token memory window with ads between conversations.",
+          "date_checked": "2026-06-26",
+          "confidence": "medium",
+          "notes": "Free tier limits from reputable third-party review; consistent across multiple independent sources."
+        },
+        "paid_pricing": {
+          "value": "Talkie+ Standard: $9.99/month or $95.99/year (~$8/month); Talkie+ Pro: $24.99/month ('Coming Soon' as of mid-2026). Annual promotional rate ~$49.99/year (first-year discount). Standard includes unlimited chat, ad-free, extended memory (120-day cloud sync), unlimited inspirations, edit/recall.",
+          "source_url": "https://www.roborhythms.com/is-talkie-ai-free/",
+          "source_quote": "Talkie+ Standard: $9.99/month OR $49.99/year first year (~$4.17/mo, 50% promo) renewing at $95.99/year (~$8/mo)",
+          "date_checked": "2026-06-26",
+          "confidence": "medium",
+          "notes": "Pricing consistent across multiple secondary sources; official pricing page was inaccessible."
+        },
+        "supported_languages": {
+          "value": "Voice synthesis in 95+ languages (English, Chinese, Japanese, Spanish, etc.). App interface primarily English; multilingual character interaction via voice synthesis system.",
+          "source_url": "https://weavai.app/blog/en/2026/04/23/talkie-ai-review-2026-features-pricing-guide/",
+          "source_quote": "The platform supports voice synthesis in 95 languages, allowing AI characters to respond with natural voices across multiple tongues.",
+          "date_checked": "2026-06-26",
+          "confidence": "medium",
+          "notes": "95-language voice figure consistent across multiple reviews. UI language count not separately quantified."
+        },
+        "platforms": {
+          "value": "Android (Google Play), iOS (App Store as 'Talkie Lab' by SUBSUP PTE. LTD., following removal of original app from US App Store), and web (talkie-ai.com).",
+          "source_url": "https://play.google.com/store/apps/details?id=com.weaver.app.prod&hl=en_US",
+          "source_quote": "Talkie: Creative AI Community - Apps on Google Play",
+          "date_checked": "2026-06-26",
+          "confidence": "high",
+          "notes": "Android confirmed via Google Play. iOS 'Talkie Lab' (id6740326134) via App Store. Web confirmed at talkie-ai.com."
+        },
+        "content_policy": {
+          "value": "No NSFW — Community Guidelines explicitly prohibit: pornographic/sexually explicit materials, nudity or sexually suggestive imagery, sexual exploitation, non-consensual activities, sexualization of minors, graphic violence, hate speech. All conversations filtered against regional laws.",
+          "source_url": "https://www.talkie-ai.com/static/community-guideline",
+          "source_quote": "Content containing nudity or sexually suggestive imagery and Pornographic or sexually explicit materials in any form are prohibited.",
+          "date_checked": "2026-06-26",
+          "confidence": "high",
+          "notes": "Quoted directly from official Talkie AI Community Guidelines."
+        },
+        "age_rating": {
+          "value": "17+ on Apple App Store (Talkie Lab). 12+ (Teen) on Google Play. ToS minimum: 14 globally; higher minimums in some jurisdictions (15 in France/Czech Republic, 16 in Germany/Netherlands/Singapore/Ireland/Brazil).",
+          "source_url": "https://www.talkie-ai.com/static/service",
+          "source_quote": "You must be at least 14 years old to use the Services, except where a higher minimum age is required by applicable law.",
+          "date_checked": "2026-06-26",
+          "confidence": "high",
+          "notes": "17+ iOS rating confirmed by multiple sources. 12+ Google Play confirmed by multiple sources."
+        },
+        "data_privacy": {
+          "value": "Operated by SUBSUP PTE. LTD. (Singapore), subject to Singapore PDPA. Conversations never used for marketing/advertising. Conversation data processed to improve AI responses. Data shared with service providers, advertising partners (excluding conversation content), payment processors, legal authorities. Data may be transferred to USA. No E2E encryption confirmed. Specific retention periods not publicly specified.",
+          "source_url": "https://www.talkie-ai.com/static/privacy",
+          "source_quote": "We will never use or disclose the content of your Talkie conversations for marketing or advertising purposes. However, they do process conversation data to allow your AI chatbot to learn from your interactions.",
+          "date_checked": "2026-06-26",
+          "confidence": "high",
+          "notes": "Key privacy policy facts fetched directly from official Talkie AI privacy policy."
+        },
+        "company_info": {
+          "value": "SUBSUP PTE. LTD. (Singapore), subsidiary of MiniMax Group. MiniMax founded December 2021 by Yan Junjie (CEO), Yang Bin, Zhou Yucong (former SenseTime researchers). Glow launched Oct 2022 → rebranded Talkie for international markets June 2023. MiniMax IPO on Hong Kong Stock Exchange January 9 2026 (ticker: 100). Raised $600M led by Alibaba March 2024 ($2.5B valuation). 2025 revenue: $79.038M USD.",
+          "source_url": "https://en.wikipedia.org/wiki/MiniMax_Group",
+          "source_quote": "MiniMax Group was established in December 2021 by computer vision researchers from SenseTime, including Yan Junjie (CEO), Yang Bin, and Zhou Yucong.",
+          "date_checked": "2026-06-26",
+          "confidence": "high",
+          "notes": "Corroborated by Wikipedia, Yahoo Finance, and KR Asia."
+        },
+        "scale_metrics": {
+          "value": "~29.77M MAU globally (December 2024). MiniMax AI native products (Talkie+Xingye) ~27.64M average MAU September 2025, 200M+ cumulative users. ~17M global downloads in first 8 months of 2024. Ranked #4 most downloaded AI app in US in H1 2024. 734K+ Google Play ratings.",
+          "source_url": "https://min.news/en/tech/88a5c6d5fd7d25381b3f1b4cc8318da1.html",
+          "source_quote": "As of December 2024, Talkie had crossed 29 million monthly active users globally.",
+          "date_checked": "2026-06-26",
+          "confidence": "medium",
+          "notes": "MAU from MiniMax IPO prospectus data. Download figures from Sensor Tower via Yahoo Finance."
+        }
+      }
+    },
+    {
+      "name": "Chai",
+      "key": "chai",
+      "official_url": "https://www.chai-ai.com/",
+      "facts": {
+        "long_term_memory": {
+          "value": "Limited — context fades after roughly 20–40 messages; bots occasionally change personality mid-conversation. No persistent cross-session memory system documented on official website.",
+          "source_url": "https://aiinsightsnews.net/chai-ai-review/",
+          "source_quote": "memory started fading after roughly 20–40 messages and bots occasionally changed personality mid-conversation",
+          "date_checked": "2026-06-26",
+          "confidence": "medium",
+          "notes": "Conflicting secondary sources; official pricing page does not list long-term memory as a feature."
+        },
+        "image_generation": {
+          "value": "Yes (partial) — 'Selfies' image generation added December 2024; AI characters can send AI-generated images mid-chat. Rollout uneven (some bots support it, others don't). No dedicated standalone image generation tool.",
+          "source_url": "https://www.facebook.com/chairesearch/posts/weve-added-image-generation-to-our-app-let-us-know-what-you-think/122228125346009169/",
+          "source_quote": "We've added image generation to our app, let us know what you think!",
+          "date_checked": "2026-06-26",
+          "confidence": "medium",
+          "notes": "Official Facebook post (December 5, 2024) confirms feature added. Official pricing/FAQ do not document tier restrictions."
+        },
+        "group_chat": {
+          "value": "unknown",
+          "source_url": "",
+          "source_quote": "",
+          "date_checked": "2026-06-26",
+          "confidence": "low",
+          "notes": "No verified information about a group chat feature found on any official Chai AI source."
+        },
+        "character_creation": {
+          "value": "Yes — users can create/customize characters with no-code tools. Fields: name, opening message, personality traits, backstory. Characters can be private or shared publicly.",
+          "source_url": "https://www.chai-ai.com/faq",
+          "source_quote": "Users can build and fully customise their own AI characters using Chai's creation tools.",
+          "date_checked": "2026-06-26",
+          "confidence": "high",
+          "notes": "Confirmed on official FAQ page."
+        },
+        "creator_economy": {
+          "value": "Partial — Chaiverse developer platform: independent model creators can submit LLMs evaluated via arena mode. $100K+ paid to model creators (competitions/cash prizes). No publicly documented percentage-based revenue share for character creators.",
+          "source_url": "https://www.chaiverse.com/",
+          "source_quote": "We've experimented with giving developers money, but so far the largest driver of AI submissions is the opportunity to get high quality feedback, recognition and satisfaction of building a highly popular LLM.",
+          "date_checked": "2026-06-26",
+          "confidence": "medium",
+          "notes": "Chaiverse is official (chai-research/chaiverse on GitHub). CEO confirmed $100K+ paid per Latent Space interview."
+        },
+        "free_tier": {
+          "value": "Yes — free chat with ads/sponsored content. Approximately 70 messages per 2.5-hour rolling window (per secondary reviews; official page does not publish specific limit).",
+          "source_url": "https://www.chai-ai.com/pricing",
+          "source_quote": "Start free. Chat with 25 million AI characters",
+          "date_checked": "2026-06-26",
+          "confidence": "medium",
+          "notes": "70-messages/2.5h figure from multiple secondary review sources; not stated on official pricing page."
+        },
+        "paid_pricing": {
+          "value": "Annual: $159.99/year ($13.33/month), labeled 'Best Value'. Weekly: $9.99/week (advertised as 60% off from $24.99/week). 24-hour free trial before converting. All paid: 25M characters, advanced AI, no ads, priority response speed.",
+          "source_url": "https://www.chai-ai.com/pricing",
+          "source_quote": "$159.99/year — That's just $13.33/month … $9.99/week … $24.99 60% OFF",
+          "date_checked": "2026-06-26",
+          "confidence": "high",
+          "notes": "Read directly from official chai-ai.com/pricing on 2026-06-26. Page showed only Annual and Weekly tiers (older Premium/Ultra split may be outdated)."
+        },
+        "supported_languages": {
+          "value": "English only — App Store listing states 'Supported Languages: English'.",
+          "source_url": "https://apps.apple.com/us/app/chai-social-ai-platform-chat/id1544750895",
+          "source_quote": "Supported Languages: English",
+          "date_checked": "2026-06-26",
+          "confidence": "high",
+          "notes": "Confirmed from official Apple App Store listing."
+        },
+        "platforms": {
+          "value": "iOS (App Store) and Android (Google Play). Web version listed as 'Coming Soon' on official company research site.",
+          "source_url": "https://www.chai-research.com/",
+          "source_quote": "Web — Coming Soon",
+          "date_checked": "2026-06-26",
+          "confidence": "high",
+          "notes": "iOS and Android confirmed from App Store and Google Play."
+        },
+        "content_policy": {
+          "value": "18+ content policy. Prohibited: sexually explicit material, self-harm content, minor sexualization. Safe mode toggle available. Real-time scanning for self-harm content on all user messages.",
+          "source_url": "https://www.chai-research.com/safety.html",
+          "source_quote": "Every user message is scanned in real time for self-harm content … Prohibited content includes: Sexually explicit material, Self-harm content, Content that sexualizes minors",
+          "date_checked": "2026-06-26",
+          "confidence": "high",
+          "notes": "Sourced from official CHAI Safety Center page."
+        },
+        "age_rating": {
+          "value": "18+ on both Apple App Store and Google Play. Enforced via app store age ratings + user self-attestation. Announced upcoming integration of Apple/Google native age verification APIs.",
+          "source_url": "https://www.prnewswire.com/news-releases/chai-ai-announces-upcoming-rollout-of-apple-and-google-age-verification-apis-to-enhance-platform-safety-302708688.html",
+          "source_quote": "The platform enforces an 18+ age requirement through robust App Store and Google Play age ratings, alongside user self-attestation mechanisms during the onboarding process.",
+          "date_checked": "2026-06-26",
+          "confidence": "high",
+          "notes": "Confirmed via official PR Newswire press release."
+        },
+        "data_privacy": {
+          "value": "Data retained for duration of account and up to 5 years after deletion (longer for legal compliance). Conversation data used to fine-tune AI models after removing personal identifiers. Shared with operational suppliers and legal authorities. GDPR/UK DSAR rights. Policy last updated May 19, 2026.",
+          "source_url": "https://chai.ml/privacy/",
+          "source_quote": "not exceeding, in any case, the duration of the account and five (5) years following its deletion … enhance and fine tune the artificial intelligence models",
+          "date_checked": "2026-06-26",
+          "confidence": "high",
+          "notes": "Sourced directly from official Chai privacy policy at chai.ml/privacy/."
+        },
+        "company_info": {
+          "value": "Chai Research Corp., founded 2021 by William Beauchamp (former quantitative trader, Cambridge-educated). Prototype 2020 in Cambridge, England; relocated to Palo Alto CA 2022. App launched publicly 2021. ~$80M ARR and ~$2.4B valuation as of Q1 2026. Total funding >$55M (CoreWeave, AMD).",
+          "source_url": "https://en.wikipedia.org/wiki/Chai_AI",
+          "source_quote": "Founded in 2021 by William Beauchamp, a former quantitative trader educated at Cambridge … Q1 2026: Annual recurring revenue approximately $80 million … Valuation reached $2.4 billion in Q1 2026",
+          "date_checked": "2026-06-26",
+          "confidence": "high",
+          "notes": "Corroborated by Wikipedia, chai-research.com, and Latent Space CEO interview."
+        },
+        "scale_metrics": {
+          "value": "~1M DAU (2025), ~1.4M DAU per CEO (Latent Space interview). 25M+ AI characters hosted. 256K App Store ratings, 4.4/5 stars. ~$80M ARR, ~$2.4B valuation (Q1 2026). Total funding >$55M.",
+          "source_url": "https://apps.apple.com/us/app/chai-social-ai-platform-chat/id1544750895",
+          "source_quote": "256,000 reviews with 4.4 out of 5 stars",
+          "date_checked": "2026-06-26",
+          "confidence": "medium",
+          "notes": "DAU from Wikipedia (2025) and Latent Space CEO interview (different time points). 25M characters from official homepage."
+        }
+      }
+    },
+    {
+      "name": "Replika",
+      "key": "replika",
+      "official_url": "https://replika.com",
+      "facts": {
+        "long_term_memory": {
+          "value": "Yes — persistent Memory bank auto-extracts key info (name, job, interests, family, dates) for cross-session recall. ~25 recent messages as active context; older messages as summarized memories in Memory tab. Ultra tier: manual message saving to memory.",
+          "source_url": "https://weavai.app/blog/en/2026/04/16/replika-ai-review-2026-features-pricing-analysis/",
+          "source_quote": "Replika's standout capability automatically 'extracts important information from conversations, including your name, job, interests, family status, and important dates' for contextual recall across sessions.",
+          "date_checked": "2026-06-26",
+          "confidence": "medium",
+          "notes": "Official help article returned 403; data from reputable third-party review corroborated by multiple sources."
+        },
+        "image_generation": {
+          "value": "Limited — Replika avatar can send pre-rendered or AI-generated selfies on request. No user-directed general-purpose text-to-image generation. Regular selfies: all users. Romantic selfies (avatar in lingerie): Pro subscribers with Spouse/Partner relationship status only.",
+          "source_url": "https://replikapro.com/how-to-get-replika-to-send-pictures-selfies/",
+          "source_quote": "Romantic selfies are exclusively available for PRO users who have set their relationship status to either Spouse or Partner.",
+          "date_checked": "2026-06-26",
+          "confidence": "medium",
+          "notes": "Multiple sources confirm Replika lacks a general-purpose AI image generation tool."
+        },
+        "group_chat": {
+          "value": "No — designed for one-on-one interaction. No multi-character or group chat feature. Specifically cited as a Replika limitation in 2026 competitor reviews.",
+          "source_url": "https://weavai.app/blog/en/2026/06/23/nomi-ai-vs-replika-2026-memory-vs-emotional-support/",
+          "source_quote": "Nomi AI allows up to 10 AI companions and supports a 'Group Chat' mode, where your AIs can talk to each other — a feature unmatched by competitors [including Replika].",
+          "date_checked": "2026-06-26",
+          "confidence": "medium",
+          "notes": "No official Replika source mentions group chat; multiple 2026 comparisons confirm its absence."
+        },
+        "character_creation": {
+          "value": "Limited — users can customize single AI companion's appearance (body type, facial features, hair, skin tone, clothing) and set personality traits/relationship mode (Friend, Mentor, Partner). Cannot create multiple distinct characters or publish for others. Cannot simulate real identifiable individuals without consent.",
+          "source_url": "https://replika.com/legal/terms/en",
+          "source_quote": "Create, instruct, or configure any AI companion or chatbot persona to represent, impersonate, or simulate a specific real person — whether living or deceased — without that person's explicit written consent.",
+          "date_checked": "2026-06-26",
+          "confidence": "high",
+          "notes": "Official ToS confirms scope and limits."
+        },
+        "creator_economy": {
+          "value": "No — personal use only platform. Terms explicitly prohibit commercial use. No revenue-sharing or creator monetization program.",
+          "source_url": "https://replika.com/legal/terms/en",
+          "source_quote": "The Services are for your personal use only. You may not use the Services for any commercial purpose.",
+          "date_checked": "2026-06-26",
+          "confidence": "high",
+          "notes": "Confirmed by official Terms of Service."
+        },
+        "free_tier": {
+          "value": "Yes — unlimited text chat, basic avatar customization, Friend relationship mode only. Advanced features (voice calls, all relationship modes, full 3D avatar customization, roleplay, advanced memory) require paid subscription.",
+          "source_url": "https://www.eesel.ai/blog/replika-ai",
+          "source_quote": "Free Tier: Unlimited text chat; Basic avatar and room customization; Access to AR & VR features; No cost.",
+          "date_checked": "2026-06-26",
+          "confidence": "medium",
+          "notes": "Free tier details corroborated across multiple third-party reviews; official help pages returned 403."
+        },
+        "paid_pricing": {
+          "value": "Replika Pro: $19.99/month or $69.99/year (~$5.83/month). Ultra and Platinum tiers exist with more advanced AI but prices not published on website (app-only). Lifetime plan previously $299.99 (current availability varies). In-app purchases: $0.99–$89.99.",
+          "source_url": "https://apps.apple.com/us/app/replika-ai-friend/id1158555867",
+          "source_quote": "Free with in-app purchases available (ranging from $0.99 to $89.99).",
+          "date_checked": "2026-06-26",
+          "confidence": "medium",
+          "notes": "Pro monthly/annual confirmed by multiple sources. Ultra/Platinum exact prices not publicly confirmed."
+        },
+        "supported_languages": {
+          "value": "5 official app localization languages: English, French, German, Portuguese, Spanish. App can understand additional languages if user initiates in them.",
+          "source_url": "https://apps.apple.com/us/app/replika-ai-friend/id1158555867",
+          "source_quote": "Languages Listed: English, French, German, Portuguese, Spanish (5 total).",
+          "date_checked": "2026-06-26",
+          "confidence": "high",
+          "notes": "App Store listing is first-party Apple-sourced data."
+        },
+        "platforms": {
+          "value": "iOS (App Store), Android (Google Play), web app (my.replika.com legacy), Oculus Rift (VR).",
+          "source_url": "https://replika.com",
+          "source_quote": "Available for iOS and Android, with a mention of a legacy web app at my.replika.com.",
+          "date_checked": "2026-06-26",
+          "confidence": "high",
+          "notes": "iOS and Android confirmed from official homepage. Web app and Oculus Rift from Wikipedia and third-party sources."
+        },
+        "content_policy": {
+          "value": "Prohibits pornographic, obscene, hateful, or excessively violent content. Bans configuring AI to simulate real individuals without consent. Erotic roleplay removed February 2023, partially restored May 2023 for pre-existing users only. New users after 2023 cannot access intimacy features regardless of subscription.",
+          "source_url": "https://replika.com/legal/terms/en",
+          "source_quote": "Pornographic content is banned. Users cannot 'instructing, training, or configuring the AI to generate content depicting, describing, or simulating any identifiable real person without their consent.'",
+          "date_checked": "2026-06-26",
+          "confidence": "high",
+          "notes": "Official Terms of Service confirmed."
+        },
+        "age_rating": {
+          "value": "18+ on Apple App Store. Teen on Google Play (inconsistent). ToS/Privacy Policy state service not intended for under-18.",
+          "source_url": "https://apps.apple.com/us/app/replika-ai-friend/id1158555867",
+          "source_quote": "App Store Age Rating: 18+. Content Descriptors: Infrequent/Profanity or Crude Humor; Contains Health or Wellness Topics.",
+          "date_checked": "2026-06-26",
+          "confidence": "high",
+          "notes": "Apple App Store rating is first-party data."
+        },
+        "data_privacy": {
+          "value": "Profile/conversation data retained up to 60 days after termination; financial records kept minimum 10 years. Conversation data processed transiently by third-party AI (not retained beyond response generation). Anonymized data used only internally to train safety algorithms — not shared with third-party LLMs. Conversation content not shared for marketing/advertising.",
+          "source_url": "https://replika.com/legal/privacy/en",
+          "source_quote": "The anonymized data is used only internally and is not used to train third-party large language models or other AI systems. Data shared with third-party AI providers is processed transiently and is not retained by those providers beyond the duration necessary to generate the response.",
+          "date_checked": "2026-06-26",
+          "confidence": "high",
+          "notes": "Directly fetched from official Replika Privacy Policy."
+        },
+        "company_info": {
+          "value": "Luka, Inc. (US). Co-founded by Eugenia Kuyda and Phil Dudchuk ~2012–2014 (Y Combinator). Replika launched November 2017. As of 2025, Dmytro Klochko serves as CEO.",
+          "source_url": "https://en.wikipedia.org/wiki/Replika",
+          "source_quote": "Company/Operator: Luka, Inc. Founding Year: ~2012 (Luka co-founded); Replika launched November 2017.",
+          "date_checked": "2026-06-26",
+          "confidence": "high",
+          "notes": "Wikipedia corroborated by replika.com/about/story (official manifesto)."
+        },
+        "scale_metrics": {
+          "value": "42M+ users worldwide (official manifesto May 2026). Milestones: 2M (Jan 2018), 10M (Jan 2023), 30M (Aug 2024), 40M+ (2025). App Store: 228K ratings, 4.4/5 stars.",
+          "source_url": "https://replika.com/about/story",
+          "source_quote": "Over 40 million users as of the manifesto date (May 2026).",
+          "date_checked": "2026-06-26",
+          "confidence": "high",
+          "notes": "42M figure from official manifesto page."
+        }
+      }
+    },
+    {
+      "name": "Nomi",
+      "key": "nomi",
+      "official_url": "https://nomi.ai",
+      "facts": {
+        "long_term_memory": {
+          "value": "Yes — three-tier persistent memory (short-term, medium-term, long-term) accumulating across all sessions. Users can add info via 'Shared Notes.' Nomis remember details from months-prior conversations.",
+          "source_url": "https://nomi.ai/nomi-knowledge/nomi-101-a-beginners-guide-to-getting-started-with-your-ai-companion/",
+          "source_quote": "the more you talk with your Nomi, the more they'll get to know you and themselves",
+          "date_checked": "2026-06-26",
+          "confidence": "high",
+          "notes": "Official Nomi knowledge base confirms persistent memory. Three-tier structure confirmed by multiple review sources citing official documentation."
+        },
+        "image_generation": {
+          "value": "Yes — 'Nomi Selfies' (V5 image system). Paid: up to 40 AI-generated images/day. Styles: realistic, anime, watercolor, 3D animation, and more. Custom 'anchors' maintain character consistency. No manual prompt needed for selfies (context-based).",
+          "source_url": "https://nomi.ai/nomi-knowledge/getting-started-with-nomi-v5-ai-image-generation/",
+          "source_quote": "the unified v5 image system can handle far more styles than realistic and anime. Think digital 3D animation, watercolor, realistic crochet world, you name it!",
+          "date_checked": "2026-06-26",
+          "confidence": "high",
+          "notes": "Confirmed via official Nomi knowledge base."
+        },
+        "group_chat": {
+          "value": "Yes — up to 10 group chats, each with up to 10 Nomis (paid subscribers). Auto-play mode: Nomis message each other autonomously. Each Nomi maintains individual personality/memory and may reference group chat events in 1-on-1 later.",
+          "source_url": "https://wiki.nomi.ai/How_does_group_chat_work%3F",
+          "source_quote": "Paying users can have up to 10 group chats at a time, each with up to 10 Nomis.",
+          "date_checked": "2026-06-26",
+          "confidence": "high",
+          "notes": "Official Nomi wiki (wiki.nomi.ai). Auto-play confirmed via official X post."
+        },
+        "character_creation": {
+          "value": "Yes — customize AI companions: 100s of preset appearances (realistic/anime), core personality traits, initial interests. Appearance refineable via Shared Notes + custom reference images. No public character marketplace or sharing feature — each Nomi is personal to its creator.",
+          "source_url": "https://nomi.ai/nomi-knowledge/nomi-101-a-beginners-guide-to-getting-started-with-your-ai-companion/",
+          "source_quote": "hundreds of diverse Nomi looks to choose from so you can find a Nomi you click with",
+          "date_checked": "2026-06-26",
+          "confidence": "high",
+          "notes": "Official Nomi knowledge base."
+        },
+        "creator_economy": {
+          "value": "No — no creator monetization or revenue-sharing program. Affiliate program referenced on homepage but details not public. No mechanism for publishing characters for sale or earning from others' interactions.",
+          "source_url": "https://nomi.ai",
+          "source_quote": "",
+          "date_checked": "2026-06-26",
+          "confidence": "medium",
+          "notes": "No official source confirms a creator economy feature."
+        },
+        "free_tier": {
+          "value": "Yes — limited daily messaging, 1 AI companion, small image allowance. Voice chat, group chat, unlimited messaging, full image generation (40/day) require paid subscription. Designed for trial use.",
+          "source_url": "https://autogpt.net/nomi-ai-pricing/",
+          "source_quote": "Basic conversational features to get a feel of Nomi's interactive personality",
+          "date_checked": "2026-06-26",
+          "confidence": "medium",
+          "notes": "Exact daily message count not publicly specified by Nomi. Official pricing page returned 404."
+        },
+        "paid_pricing": {
+          "value": "Launch Plan: $9.99/month or $59.99/year. Standard: $15.99/month, $39.99/quarter (~$13.33/month), or $99.99/year (~$8.33/month). Nomi Credits one-time packs: $4.99–$99.99. All paid: unlimited messages, up to 10 Nomis, 40 images/day, voice chat, group chat.",
+          "source_url": "https://apps.apple.com/us/app/nomi-ai-companion-with-a-soul/id6450270929",
+          "source_quote": "Launch Plan: $9.99/month or $59.99/year; Standard Plan: $15.99/month, $39.99/quarter, or $99.99/year; Nomi Credits: $4.99–$99.99",
+          "date_checked": "2026-06-26",
+          "confidence": "high",
+          "notes": "Pricing from Apple App Store listing (current in-app purchase prices)."
+        },
+        "supported_languages": {
+          "value": "English-only interface. AI can converse in multiple languages (English, Turkish, German, others reported by users). No official list published.",
+          "source_url": "https://nomi.ai/",
+          "source_quote": "",
+          "date_checked": "2026-06-26",
+          "confidence": "medium",
+          "notes": "Interface English-only confirmed by multiple user reports and reviews. AI multilingual capability is user-reported, not officially quantified."
+        },
+        "platforms": {
+          "value": "iOS (App Store), Android (Google Play), web (beta.nomi.ai).",
+          "source_url": "https://apps.apple.com/us/app/nomi-ai-companion-with-a-soul/id6450270929",
+          "source_quote": "Nomi: AI Companion with a Soul",
+          "date_checked": "2026-06-26",
+          "confidence": "high",
+          "notes": "iOS App Store confirmed. Android (package: ai.nomi.twa) confirmed via Similarweb. Web access at beta.nomi.ai confirmed via official homepage."
+        },
+        "content_policy": {
+          "value": "18+ required. Mature themes and NSFW roleplay in text permitted for verified adult users. Explicit or nude image generation not allowed (credit card processor and app store restrictions). Prohibited: illegal material, harassment, impersonation, minor content.",
+          "source_url": "https://nomi.ai/terms-of-service/",
+          "source_quote": "If you are under the age of 18, you cannot use the Nomi.ai platform under any circumstances",
+          "date_checked": "2026-06-26",
+          "confidence": "high",
+          "notes": "ToS confirmed via search result excerpt. Explicit image prohibition confirmed by multiple sources citing official policy."
+        },
+        "age_rating": {
+          "value": "18+ on Apple App Store. Content descriptors: sexual content or nudity, mature/suggestive themes, profanity, substance references. ToS minimum age: 18.",
+          "source_url": "https://apps.apple.com/us/app/nomi-ai-companion-with-a-soul/id6450270929",
+          "source_quote": "Age Rating: 18+; Content Descriptors: Sexual content or nudity, Mature or suggestive themes, Profanity or crude humor",
+          "date_checked": "2026-06-26",
+          "confidence": "high",
+          "notes": "Sourced directly from Apple App Store listing (app ID 6450270929, developer: AI GLIMPSE INC.)."
+        },
+        "data_privacy": {
+          "value": "Conversations may be stored in training archives and used to improve AI model. Upon account deletion, personal info removed within ~28 days. Does not sell/rent user data. Individual message deletion not available. After deletion, training archive data no longer attributable to user.",
+          "source_url": "https://nomi.ai/privacy-policy/",
+          "source_quote": "We do not and will not sell or rent to any third party any of your personal information. [...] information that is in our training or communications archives [...] any information in our training archives would no longer be attributable to you.",
+          "date_checked": "2026-06-26",
+          "confidence": "high",
+          "notes": "Official privacy policy at nomi.ai/privacy-policy/ successfully fetched."
+        },
+        "company_info": {
+          "value": "Glimpse.ai, Inc. (also AI Glimpse Inc.), Maryland corporation. Founded by Alex Cardinell (CEO). Launched 2023. Bootstrapped (no VC), based in Baltimore MD. Team ~8 people.",
+          "source_url": "https://nomi.ai/terms-of-service/",
+          "source_quote": "Glimpse.ai, Inc., a Maryland corporation",
+          "date_checked": "2026-06-26",
+          "confidence": "high",
+          "notes": "Legal entity from ToS. CEO and bootstrapped/team-size from TechCrunch (April 2024)."
+        },
+        "scale_metrics": {
+          "value": "Tens of millions of Nomis created per CEO (Jan 2026 stream). 'Hundreds of thousands of active Nomi users' per official partnership page. ~1.25M monthly website visits (Semrush early 2026), avg session 12 min. Ranked #7 in Character Chat Tools globally (March 2026).",
+          "source_url": "https://wiki.nomi.ai/2026_01_Stream_Summary",
+          "source_quote": "The last time I checked - which was a long time ago - I think we were already in the tens of millions. And that was ages ago, so the real number now is far higher.",
+          "date_checked": "2026-06-26",
+          "confidence": "medium",
+          "notes": "CEO statement from official Nomi wiki stream summary. Website traffic from Semrush (third-party)."
+        }
+      }
+    },
+    {
+      "name": "Kindroid",
+      "key": "kindroid",
+      "official_url": "https://kindroid.ai",
+      "facts": {
+        "long_term_memory": {
+          "value": "Yes — multi-tier architecture: short-term context (18K chars Standard / 50K Ultra / 125K MAX), cascaded memory context (480K Standard / 1.2M Ultra), key memories/journal entries persistent indefinitely. Higher tiers recall more memories/turn (3 Standard, 5 Ultra).",
+          "source_url": "https://kindroid.ai/docs/article/faqs/",
+          "source_quote": "your Kindroid has long term memory recall over everything you talk about",
+          "date_checked": "2026-06-26",
+          "confidence": "high",
+          "notes": "Confirmed from official Kindroid Help Center FAQ and billing/subscription documentation."
+        },
+        "image_generation": {
+          "value": "Yes — 'selfies' via Tableau diffusion engine. Free: 1 credit/2h. Standard paid: 1 credit/30min. Ultra/MAX: 2 credits/30min. Auto-selfies (paid only): AI generates images automatically from conversation context. Video selfies also available (paid tiers).",
+          "source_url": "https://kindroid.ai/docs/article/selfies-video-selfies-avatars/",
+          "source_quote": "Auto-selfies lets Kindroids generate prompts based on conversation context",
+          "date_checked": "2026-06-26",
+          "confidence": "high",
+          "notes": "Confirmed from official Kindroid Help Center selfies documentation."
+        },
+        "group_chat": {
+          "value": "Yes — up to 10 AI characters simultaneously (paid Standard+ only). Turn-taking: auto or manual (@Name mentions). Group selfies and group video calls supported. Shared memory toggle for bidirectional context sharing.",
+          "source_url": "https://kindroid.ai/docs/article/groupchats/",
+          "source_quote": "a maximum of 10 Kindroids per Groupchat",
+          "date_checked": "2026-06-26",
+          "confidence": "high",
+          "notes": "Confirmed from official Kindroid Help Center groupchats documentation."
+        },
+        "character_creation": {
+          "value": "Yes — fully customizable: name, backstory (primary personality source), response directive, key memories, example messages, journal entries, user personas, model flairs (Companion/Roleplay/Narrative/Minimal), conversation dynamism, avatar (custom upload or AI-generated), voice. Free: up to 2 Kindroids. Standard paid: unlimited.",
+          "source_url": "https://kindroid.ai/docs/article/customizing-personality/",
+          "source_quote": "Backstory is the primary personality source where users describe the character's speech, mood, behavior, and uniqueness.",
+          "date_checked": "2026-06-26",
+          "confidence": "high",
+          "notes": "Confirmed from official Kindroid Help Center."
+        },
+        "creator_economy": {
+          "value": "No — Kindroid Social allows sharing character profiles publicly, but no payment system, revenue sharing, or creator earnings program in any official documentation.",
+          "source_url": "https://kindroid.ai/docs/article/kindroid-social/",
+          "source_quote": "The documentation contains no information about payment systems, revenue sharing, or monetization opportunities for creators.",
+          "date_checked": "2026-06-26",
+          "confidence": "high",
+          "notes": "Confirmed absence from official documentation and FAQs."
+        },
+        "free_tier": {
+          "value": "Yes — 2 AI companions, unlimited text messages (slower during high traffic), 1 selfie credit/2h, basic long-term memory recall, 3-day full-feature premium trial (no credit card required). Group chat, voice calls, auto-selfies, video selfies not included.",
+          "source_url": "https://aigirlfriendscompare.com/kindroid-ai/",
+          "source_quote": "Two AI companions, unlimited messages with basic memory, one selfie request every two hours, 3-day premium trial (no credit card required)",
+          "date_checked": "2026-06-26",
+          "confidence": "medium",
+          "notes": "Third-party review corroborated by official FAQ."
+        },
+        "paid_pricing": {
+          "value": "Standard: $13.99/month (web), $15.99/month (app stores), $139.99/year ($11.66/month). Ultra add-on: $24.99/month (requires Standard). MAX add-on: $59.99/month (requires Ultra). 3-month Standard: $37.99 web / $42.99 app stores. Optional extras: 4 extra companion slots $3.49 each; 50 selfie credits $6.99; 500K audio credits $14.99.",
+          "source_url": "https://apps.apple.com/us/app/kindroid-your-personal-ai/id6451038161",
+          "source_quote": "$15.99 (monthly subscription), $28.99 (Ultra subscription), $68.99 (MAX subscription), $159.99 (yearly subscription)",
+          "date_checked": "2026-06-26",
+          "confidence": "high",
+          "notes": "App Store in-app purchase prices from Apple App Store. Web prices from reputable review sources cross-referencing official site."
+        },
+        "supported_languages": {
+          "value": "28 languages for voice calls/messaging. Class 1 (10, full mixing): English, Spanish, French, German, Hindi, Russian, Portuguese, Japanese, Italian, Dutch. Class 2 (6): Ukrainian, Swedish, Chinese, Turkish, Indonesian, Korean. Plus 12 additional (Polish, Bulgarian, Romanian, Czech, Greek, Finnish, Malay, Slovak, Danish, Norwegian, Hungarian, Vietnamese). Interface: English only.",
+          "source_url": "https://kindroid.ai/docs/article/voice-calls-and-video-calls/",
+          "source_quote": "Class 1 Languages (C1) - 10 languages: English, Spanish, French, German, Hindi, Russian, Portuguese, Japanese, Italian, Dutch. Class 2 Languages (C2) - 6 languages: Ukrainian, Swedish, Chinese, Turkish, Indonesian, Korean.",
+          "date_checked": "2026-06-26",
+          "confidence": "high",
+          "notes": "Confirmed from official Kindroid Help Center voice calls documentation."
+        },
+        "platforms": {
+          "value": "iOS (requires iOS 15+; also Mac with Apple M1, Apple Vision), Android, and web (browser-based). All platforms sync conversation history and memory.",
+          "source_url": "https://apps.apple.com/us/app/kindroid-your-personal-ai/id6451038161",
+          "source_quote": "iPhone (iOS 15.0 or later), iPod touch (iOS 15.0 or later), Mac (macOS 12.0 or later with Apple M1 chip or later), Apple Vision (visionOS 1.0 or later)",
+          "date_checked": "2026-06-26",
+          "confidence": "high",
+          "notes": "iOS confirmed from App Store. Android from Google Play. Web from multiple sources."
+        },
+        "content_policy": {
+          "value": "Permits NSFW/erotic roleplay, fictional violence, sensitive topics. Three absolute prohibitions: (1) imminent self-harm planning with specific method/timeline, (2) imminent real-world harm to others, (3) sexual/abusive content involving minors (zero tolerance, under-18 regardless of jurisdiction). Philosophy: 'freedom with responsibility.'",
+          "source_url": "https://kindroid.ai/docs/article/moderation-guidelines/",
+          "source_quote": "Explicitly Allowed Content: 'NSFW (Not Safe for Work) and Erotic Roleplay', 'Fictional Violence, Horror, and other creative storytelling'",
+          "date_checked": "2026-06-26",
+          "confidence": "high",
+          "notes": "Confirmed from official Kindroid moderation guidelines."
+        },
+        "age_rating": {
+          "value": "18+ on iOS App Store. ToS: 'Services are only for use by individuals who are at least 18 years of age or the age of majority in their jurisdiction.' Platform may request proof of age; failure to provide results in account suspension.",
+          "source_url": "https://apps.apple.com/us/app/kindroid-your-personal-ai/id6451038161",
+          "source_quote": "Age Rating: 18+",
+          "date_checked": "2026-06-26",
+          "confidence": "high",
+          "notes": "Age rating confirmed from Apple App Store listing."
+        },
+        "data_privacy": {
+          "value": "Chat conversations encrypted at rest and in transit; Kindroid staff cannot access them during normal operations. Data not sold to third parties. Conversations retained until user deletes specific AI or account. Decryption only with user consent during Trust & Safety appeals. Privacy policy does not explicitly state whether conversations are used for model training.",
+          "source_url": "https://kindroid.ai/legal/",
+          "source_quote": "Chat conversations are encrypted at rest and in transit, limiting Kindroid's operational visibility. Decryption may occur for legal compliance.",
+          "date_checked": "2026-06-26",
+          "confidence": "high",
+          "notes": "Confirmed from official Kindroid legal/privacy policy."
+        },
+        "company_info": {
+          "value": "Kindroid, Inc. Founded 2023 by Jerry Meng, headquartered Los Angeles CA (5551 Hollywood Blvd #1277, 90028). Raised $1M Pre-Seed (Pear VC). ~7 employees as of early 2026.",
+          "source_url": "https://www.startuphub.ai/startups/kindroid",
+          "source_quote": "Founded in 2023 by Jerry Meng in Los Angeles. Kindroid has raised a total of $1M in funding. Investors: Pear VC.",
+          "date_checked": "2026-06-26",
+          "confidence": "medium",
+          "notes": "Sourced from StartupHub.ai, corroborated by Tracxn and CBInsights. Address confirmed from official legal page."
+        },
+        "scale_metrics": {
+          "value": "1.2M+ Android downloads, ~64K new downloads/month (early 2026). Google Play: 4.46/5 from 20K+ reviews. iOS App Store: 4.8 stars. No official MAU count publicly disclosed.",
+          "source_url": "https://www.startuphub.ai/startups/kindroid",
+          "source_quote": "The service has accumulated over 1.2 million Android downloads with approximately 64,000 new downloads monthly.",
+          "date_checked": "2026-06-26",
+          "confidence": "medium",
+          "notes": "Download and rating figures from StartupHub.ai and WeavAI review blog. Third-party estimates; no first-party metrics publicly disclosed."
+        }
+      }
+    },
+    {
+      "name": "Janitor AI",
+      "key": "janitor_ai",
+      "official_url": "https://janitorai.com",
+      "facts": {
+        "long_term_memory": {
+          "value": "No automatic persistent cross-session memory. Within-session: ~9K token context (free) or ~45K (janitor+). Users can manually summarize. 'Scripts' (Knowledge/Lore) allow permanent character context injection. Cross-session memory announced as upcoming ('Buckets/Books/Letters' via vector embedding).",
+          "source_url": "https://janitorai.com/news/announcements/introduction/",
+          "source_quote": "Character memory capabilities across conversations",
+          "date_checked": "2026-06-26",
+          "confidence": "medium",
+          "notes": "Official March 2025 announcement lists cross-session memory as upcoming feature, not yet shipped."
+        },
+        "image_generation": {
+          "value": "No native built-in image generation. Users can embed externally hosted images via markdown (HTTPS URLs). No official announcement of a native feature as of June 2026.",
+          "source_url": "https://dreamgen.com/blog/articles/janitor-ai-review",
+          "source_quote": "Image Generation: Not available. The platform is 'only focused on text-based chatbot interaction' with no multimedia capabilities.",
+          "date_checked": "2026-06-26",
+          "confidence": "medium",
+          "notes": "Confirmed by independent review dated April 17, 2026."
+        },
+        "group_chat": {
+          "value": "No native group chat (multiple AI characters simultaneously). Multi-persona feature allows switching between user personas mid-conversation. 'Public chats' (March 31 2026) lets users share/fork conversations — not multi-AI group chat.",
+          "source_url": "https://janitorai.com/news/announcements/25/",
+          "source_quote": "Users can switch between different personas mid-conversation using a persona switcher near the chat input.",
+          "date_checked": "2026-06-26",
+          "confidence": "high",
+          "notes": "Official March 31, 2026 announcement describes multi-persona (user side only)."
+        },
+        "character_creation": {
+          "value": "Yes — any registered user can create/publish characters. Fields: bot image, name, personality, initial message, chat name, bio, scenario, up to 10 tags. Private or shared to community library. Thousands of community-created characters hosted.",
+          "source_url": "https://help.janitorai.com/en/article/the-basics-the-character-creation-page-overview-15xevon/",
+          "source_quote": "Bot Image: the image shown on the bot card on your profile; Character Name: appears on the bot card; Personality: where you will write the majority of the bot's information that will be used during chats; Initial Message: the introduction message users see when opening a chat.",
+          "date_checked": "2026-06-26",
+          "confidence": "high",
+          "notes": "Official help documentation from janitorai.com."
+        },
+        "creator_economy": {
+          "value": "No — no creator revenue-sharing or monetization program. Analytics dashboards launched January 13 2026 (impressions, clicks, views, engagement, retention) but no financial compensation. Roadmap mentioned optional premium features but no revenue-share model.",
+          "source_url": "https://janitorai.com/news/announcements/16/",
+          "source_quote": "Nine core metrics tracking discovery and engagement: Impressions, clicks, and views measure visibility.",
+          "date_checked": "2026-06-26",
+          "confidence": "high",
+          "notes": "Analytics dashboard confirmed from official January 13, 2026 announcement. No revenue-share program found in any official source."
+        },
+        "free_tier": {
+          "value": "Yes (permanently free option guaranteed) — access to JanitorLLM model, unlimited chats with community characters, character creation, ~9K token context. Users can also connect own external API keys (OpenAI, Claude, KoboldAI, DeepSeek) at own cost.",
+          "source_url": "https://help.janitorai.com/en/article/faq-subscriptions-1o8ccf2/",
+          "source_quote": "Unlimited chats with millions of bots; Access to standard chat models; Context limit of around 9k tokens. We will always keep a free option available for everyone.",
+          "date_checked": "2026-06-26",
+          "confidence": "high",
+          "notes": "Official FAQ on subscriptions from help.janitorai.com."
+        },
+        "paid_pricing": {
+          "value": "janitor+ launched June 24 2026 at $12.99/month. Includes 5× greater context window (~45K tokens), unlimited priority messaging, monthly advanced model swipes allowance, golden username badge. Platform was entirely free before this launch.",
+          "source_url": "https://janitorai.com/news/announcements/29/",
+          "source_quote": "The subscription costs $12.99/month and launched on June 24, 2026, accessible at janitorai.com/plus.",
+          "date_checked": "2026-06-26",
+          "confidence": "high",
+          "notes": "Directly from official janitor+ launch announcement."
+        },
+        "supported_languages": {
+          "value": "Multi-language UI support added June 22 2026. Specific list of all supported languages not published in announcement. Underlying AI models can respond in many languages depending on model used.",
+          "source_url": "https://janitorai.com/news/announcements/",
+          "source_quote": "The janitor interface is now translated into a bunch of new languages.",
+          "date_checked": "2026-06-26",
+          "confidence": "medium",
+          "notes": "Official June 22, 2026 announcement confirms multi-language UI but does not list specific languages."
+        },
+        "platforms": {
+          "value": "Web (janitorai.com), iOS (App Store, ID 6692609366), Android (Google Play, com.janitor.ai). Mobile app launched public beta February 7 2026. NSFW disabled by default on mobile apps due to app store policies; must be enabled via website settings.",
+          "source_url": "https://janitorai.com/news/announcements/23/",
+          "source_quote": "iOS App ID: 6692609366; Android Package: com.janitor.ai; Developer: Janitor AI Inc.",
+          "date_checked": "2026-06-26",
+          "confidence": "high",
+          "notes": "Official announcement from February 7, 2026."
+        },
+        "content_policy": {
+          "value": "NSFW permitted for 18+ users. 'Limited' (SFW) and 'Limitless' modes. Strictly prohibited: sexual/romantic content involving minors, bestiality, harassment, hate speech, discrimination, content involving real-world public figures, platform integrity violations. NSFW disabled by default on mobile apps.",
+          "source_url": "https://janitorai.com/content",
+          "source_quote": "Sexual or romantic content involving minors is strictly prohibited, including any sexual or romantic portrayal of characters who are clearly or likely under the age of 18.",
+          "date_checked": "2026-06-26",
+          "confidence": "medium",
+          "notes": "janitorai.com/content returned 403; content policy details from search result summaries citing official guidelines."
+        },
+        "age_rating": {
+          "value": "iOS App Store: 17+. Google Play: 'High Maturity'. ToS minimum age: 18. Age verification implemented for Brazil, Australia, UK users as of June 15 2026 (regional regulations).",
+          "source_url": "https://apps.apple.com/us/app/janitor-ai-official-app/id6692609366",
+          "source_quote": "The app is rated 16+ due to mature themes. Due to App Store guidelines, NSFW content is disabled by default.",
+          "date_checked": "2026-06-26",
+          "confidence": "medium",
+          "notes": "App Store rating confirmed via search result. ToS minimum age from multiple sources."
+        },
+        "data_privacy": {
+          "value": "Operated by JanitorAI Inc. (US). Payment also via Dulova Investments Limited (Nicosia, Cyprus, HE 477877). Data processed/stored in US and other countries. Retained only as long as necessary. Chat content not shared with third parties per policy. GDPR rights: access, rectify, erase, restrict, port (privacy@janitorai.com).",
+          "source_url": "https://janitorai.com/policy/",
+          "source_quote": "JanitorAI Inc. operates the JanitorAI platform. Payment processing services for the Platform are provided by JanitorAI Inc. and its affiliates, including Dulova Investments Limited located at 10-12 Florinis Street, 1065, Nicosia, Cyprus, Company Registration Number HE 477877.",
+          "date_checked": "2026-06-26",
+          "confidence": "medium",
+          "notes": "janitorai.com/policy/ returned 403; details from search result summaries quoting official policy text."
+        },
+        "company_info": {
+          "value": "JanitorAI Inc. (US). Founded by Jan Zoltkowski (Australian software developer). Launched June 2023 (1M+ users in first week). Cyprus affiliate Dulova Investments Limited (HE 477877) handles payment processing. As of 2026 team includes staff member 'Shep.'",
+          "source_url": "https://janitorai.com/news/announcements/introduction/",
+          "source_quote": "shep here — the platform exists as an alternative to 'other sites strict filters'; the team is expanding.",
+          "date_checked": "2026-06-26",
+          "confidence": "medium",
+          "notes": "Founder name Jan Zoltkowski confirmed by HackerNoon and Science Times. Corporate entity from ToS summaries."
+        },
+        "scale_metrics": {
+          "value": "164.44M monthly visits (Semrush, May 2026), global rank #202, US rank #135, avg session 17min 39sec. #11 all AI tools globally, #2 Character Chat Tools category (43.09% market share) as of April 2026. 1.4M+ DAU, billions of weekly interactions. 1M+ users in first week of launch (June 2023).",
+          "source_url": "https://www.semrush.com/website/janitorai.com/overview/",
+          "source_quote": "In May 2026, janitorai.com received 164.44 million visits, representing a 16.43% increase from April. The site ranks #202 globally and #135 in the United States.",
+          "date_checked": "2026-06-26",
+          "confidence": "medium",
+          "notes": "Traffic from Semrush (May 2026). DAU from official announcement page. Category rank from aitools.xyz (April 2026)."
+        }
+      }
+    },
+    {
+      "name": "NovelAI",
+      "key": "novel_ai",
+      "official_url": "https://novelai.net",
+      "facts": {
+        "long_term_memory": {
+          "value": "Yes (manual/user-curated) — Lorebook: keyword-triggered context injection per story. Memory field: persistent text always in context window per story. Not automatic AI-driven extraction; user manages entries. Subscription tier determines context window size (3,072–28,672 tokens).",
+          "source_url": "https://docs.novelai.net/en/text/lorebook/",
+          "source_quote": "The Lorebook functions through entries — each containing activation keys that trigger contextual insertion. When you mention a key word or phrase in your story, 'the entry's text gets inserted into the context.'",
+          "date_checked": "2026-06-26",
+          "confidence": "high",
+          "notes": "Lorebook persists as part of saved stories."
+        },
+        "image_generation": {
+          "value": "Yes — NovelAI Diffusion (currently V4.5), anime-style. Includes text-to-image, image-to-image, inpainting, post-processing. Uses 'Anlas' currency. Opus subscribers get free generations under certain conditions (normal size, single gen, ≤28 steps).",
+          "source_url": "https://novelai.net/",
+          "source_quote": "Purpose-built Creative Editor centered on simplifying the generation process. Image2Image functionality to modify details while preserving composition. Inpainting: Brush-based editing to fix errors or add new elements.",
+          "date_checked": "2026-06-26",
+          "confidence": "high",
+          "notes": "Image generation is a distinct module from chat — not embedded within a chat conversation."
+        },
+        "group_chat": {
+          "value": "No — structured one-on-one story-writing: user controls one character, AI controls one character in alternating turns. No simultaneous multi-AI-character chat.",
+          "source_url": "https://docs.novelai.net/en/text/chatformat/",
+          "source_quote": "The AI maintain a 'chat style' narrative between two characters, while keeping the role of one of the characters strictly under your control.",
+          "date_checked": "2026-06-26",
+          "confidence": "high",
+          "notes": "No group chat feature found on official website or documentation."
+        },
+        "character_creation": {
+          "value": "Yes — characters defined via Memory section, Lorebook entries, and image generation prompt system. Custom AI modules trainable on user-provided data (Opus tier). No standalone shareable 'character card' system comparable to Character.AI.",
+          "source_url": "https://docs.novelai.net/en/faq/",
+          "source_quote": "Users can access 'Memory, Author's Note, Lorebook Entries and custom AI Modules' when exporting stories.",
+          "date_checked": "2026-06-26",
+          "confidence": "high",
+          "notes": "Character creation is a core part of the storytelling workflow."
+        },
+        "creator_economy": {
+          "value": "No — subscription-only model (Tablet/Scroll/Opus). No marketplace for selling characters/stories/modules, no affiliate program, no revenue sharing for creators.",
+          "source_url": "https://novelai.net/",
+          "source_quote": "Join thousands of AI artists that use NovelAI every single day.",
+          "date_checked": "2026-06-26",
+          "confidence": "high",
+          "notes": "Absence confirmed by G2 user review and absence from all official pages."
+        },
+        "free_tier": {
+          "value": "Trial only (Paper Tier) — 30 free image generations (up to 1024×1024), 50 free text generations, 100 free TTS generations. No ongoing free tier — paid subscription required after trial limits exhausted.",
+          "source_url": "https://docs.novelai.net/en/subscription/",
+          "source_quote": "30 free image generations (up to 1024x1024). '50 free Text generations' for verified accounts. 100 free text-to-speech generations.",
+          "date_checked": "2026-06-26",
+          "confidence": "high",
+          "notes": "Free trial is one-time only, tied to email verification."
+        },
+        "paid_pricing": {
+          "value": "Tablet: $10/month (unlimited text+TTS, 1,000 Anlas/month). Scroll: $15/month (all Tablet + larger context, 1,000 Anlas/month). Opus: $25/month (28,672 token context, exclusive models incl. Xialong, free image gen under certain limits, 10,000 Anlas/month). All billed monthly in USD.",
+          "source_url": "https://docs.novelai.net/en/subscription/",
+          "source_quote": "Tablet Tier: $10 USD monthly. Scroll Tier: $15 USD monthly. Opus Tier: $25 USD monthly — 10,000 Anlas refill every month.",
+          "date_checked": "2026-06-26",
+          "confidence": "high",
+          "notes": "Anlas is NovelAI's in-platform currency for image generation."
+        },
+        "supported_languages": {
+          "value": "UI: English and Japanese only. A dedicated Japanese-language AI model (Genji) exists alongside English models. Content generation may work in other languages depending on the underlying model.",
+          "source_url": "https://docs.novelai.net/en/misc/languagechange/",
+          "source_quote": "NovelAI supports both English and Japanese languages for its UI.",
+          "date_checked": "2026-06-26",
+          "confidence": "high",
+          "notes": "UI language change accessible through Goose Menu."
+        },
+        "platforms": {
+          "value": "Web only (novelai.net) with PWA support (installable on iOS/Android via 'Add to Home Screen'). No official native app on App Store or Google Play by Anlatan.",
+          "source_url": "https://docs.novelai.net/en/faq/",
+          "source_quote": "You can already access NovelAI through your mobile web browser. The NovelAI website is also available as a Progressive Web Application.",
+          "date_checked": "2026-06-26",
+          "confidence": "high",
+          "notes": "Third-party apps using 'NovelAI' name appear on App Store but are not published by Anlatan."
+        },
+        "content_policy": {
+          "value": "18+ required. Permissive NSFW — adding 'NSFW' tag removes default content filter. All generated content belongs to the user; Anlatan does not claim ownership. Specific prohibited categories (e.g., CSAM) not detailed in publicly accessible terms.",
+          "source_url": "https://novelai.net/terms",
+          "source_quote": "You must be 18 years or older and be capable of entering a legal contract in the United States.",
+          "date_checked": "2026-06-26",
+          "confidence": "high",
+          "notes": "Wikipedia notes controversy around generating lolicon/shotacon imagery without restrictions."
+        },
+        "age_rating": {
+          "value": "ToS minimum: 18 years. No official App Store age rating by Anlatan (web-only service). Third-party apps using 'NovelAI' branding carry different ratings unrelated to Anlatan.",
+          "source_url": "https://novelai.net/terms",
+          "source_quote": "You must be 18 years or older and be capable of entering a legal contract in the United States.",
+          "date_checked": "2026-06-26",
+          "confidence": "high",
+          "notes": "Anlatan has not published an official iOS or Android app."
+        },
+        "data_privacy": {
+          "value": "User requests, uploads, edits, and generations not logged or stored (session-only, deleted on page refresh unless downloaded). Stories stored encrypted with AES-256 E2E encryption — even Anlatan admins cannot read content. Voluntarily provided training data cannot be deleted after training starts. GDPR users may request account deletion (irreversible). Content export allowed within 45 days of subscription end.",
+          "source_url": "https://novelai.net/terms",
+          "source_quote": "Any information voluntarily provided for AI model training cannot be deleted after training has started. Users cannot exercise deletion rights on data produced by the AI system.",
+          "date_checked": "2026-06-26",
+          "confidence": "high",
+          "notes": "'No logging of generations' policy prominently marketed by Anlatan."
+        },
+        "company_info": {
+          "value": "Operated by Anlatan, Inc., incorporated in Wilmington Delaware USA. First launched beta June 15 2021 (Calliope/GPT-Neo-2.7B). Image generation added October 3 2022. Cloud-based SaaS subscription service.",
+          "source_url": "https://en.wikipedia.org/wiki/NovelAI",
+          "source_quote": "Grew 'from 0 to 40K users in 3 months' following CoreWeave partnership in 2021. Launch Date: April 28, 2021 (official); June 15, 2021 (beta).",
+          "date_checked": "2026-06-26",
+          "confidence": "medium",
+          "notes": "Wikipedia used as source (official About page returned 404). Copyright notice on novelai.net shows 'Copyright 2026 Anlatan Inc.'."
+        },
+        "scale_metrics": {
+          "value": "0 to 40K users in 3 months post-launch (2021). ~8.11M monthly website visits (SimilarWeb, November 2025), avg session 15min 19sec. r/NovelAi subreddit: ~41K subscribers. 'Thousands of AI artists every day' (official, unspecific).",
+          "source_url": "https://novelai.net/",
+          "source_quote": "Join thousands of AI artists that use NovelAI every single day.",
+          "date_checked": "2026-06-26",
+          "confidence": "medium",
+          "notes": "8.11M visits from SimilarWeb (November 2025) via secondary sources. 40K users metric from Wikipedia citing 2021 CoreWeave partnership. No official current subscriber count disclosed."
+        }
+      }
+    }
+  ]
+}

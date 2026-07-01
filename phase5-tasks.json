@@ -1,0 +1,400 @@
+[
+  {
+    "id": "P5-T01",
+    "title": "Scaffold apps/web Next.js app + workspaces + type-sharing alias + dark token system",
+    "files": [
+      "package.json",
+      "apps/web/package.json",
+      "apps/web/next.config.ts",
+      "apps/web/tsconfig.json",
+      "apps/web/.eslintrc.cjs",
+      "apps/web/app/layout.tsx",
+      "apps/web/app/(marketing)/page.tsx",
+      "apps/web/styles/tokens.css",
+      "apps/web/lib/wire.ts"
+    ],
+    "dependsOn": [],
+    "parallelGroup": 1,
+    "description": "Add root package.json \"workspaces\": [\"apps/web\"]. Scaffold Next.js 15 App Router (React 19, Node 22, TS strict). tsconfig paths @engine/* -> ../../src/*. Verify a server file can `import type { RunReport } from \"@engine/domain/metrics.types\"`. ESLint no-restricted-imports forbids @engine/db|metrics|providers|scheduler|billing|report in 'use client' files. styles/tokens.css = dark gpto tokens (--bg #0B1020, --accent cyan #22D3EE, etc.). lib/wire.ts defines WireRunReport (Date fields -> string) + a placeholder toWireReport.",
+    "acceptanceCriteria": [
+      "`npm install` resolves the workspace; `npm run --workspace apps/web build` (or dev) starts",
+      "A server component importing @engine/domain/metrics.types type-checks with no duplication",
+      "tokens.css renders a dark navy surface + cyan accent; no gradients/emoji",
+      "ESLint errors when a 'use client' file imports @engine/db"
+    ]
+  },
+  {
+    "id": "P5-T02",
+    "title": "Migration 0013 — auth/session tables",
+    "files": [
+      "src/db/migrations/0013_auth_session.sql",
+      "src/db/schema.ts"
+    ],
+    "dependsOn": [
+      "P5-T01"
+    ],
+    "parallelGroup": 2,
+    "description": "PLAIN tables app_user (email UNIQUE, password_hash, customer_id NULL REFERENCES customer, role CHECK owner|member|staff, CHECK non-staff must be scoped) and app_session (token_hash UNIQUE, expires_at). Add Kysely types to schema.ts. Fully transactional; no Timescale objects.",
+    "acceptanceCriteria": [
+      "`npm run migrate` applies 0013 cleanly and is idempotent on re-run",
+      "app_user_scope_chk rejects a non-staff row with NULL customer_id",
+      "schema.ts compiles with the two new tables typed"
+    ]
+  },
+  {
+    "id": "P5-T03",
+    "title": "Migration 0014 — billing tables (subscription, invoice, invoice_line)",
+    "files": [
+      "src/db/migrations/0014_billing.sql",
+      "src/db/schema.ts"
+    ],
+    "dependsOn": [
+      "P5-T01"
+    ],
+    "parallelGroup": 2,
+    "description": "PLAIN tables: subscription (customer_id PK, plan_tier, base_krw, status, period cols, cancel_at_period_end), invoice (UNIQUE(customer_id,period_start,period_end) for idempotent close, base/overage/vat/total KRW), invoice_line (kind base|overage|human_ops). Add Kysely types.",
+    "acceptanceCriteria": [
+      "0014 applies cleanly and idempotently",
+      "invoice UNIQUE(customer_id,period_start,period_end) present",
+      "schema.ts typed for all three tables"
+    ]
+  },
+  {
+    "id": "P5-T04",
+    "title": "Migration 0015 — report_snapshot (immutable) + report_delivery, and 0016 indexes",
+    "files": [
+      "src/db/migrations/0015_report_delivery.sql",
+      "src/db/migrations/0016_phase5_indexes.sql",
+      "src/db/schema.ts"
+    ],
+    "dependsOn": [
+      "P5-T01"
+    ],
+    "parallelGroup": 2,
+    "description": "PLAIN tables: report_snapshot (UNIQUE(run_id), report_json jsonb = as-delivered RunReport, week_start, smr/visibility/top_sov/abstain_rate/wow_smr_delta), report_delivery (UNIQUE(snapshot_id,recipient)). 0016 holds any additional scoping/period indexes. No hypertable/CAGG/RLS DDL.",
+    "acceptanceCriteria": [
+      "0015 + 0016 apply cleanly and idempotently",
+      "report_snapshot UNIQUE(run_id) and report_delivery UNIQUE(snapshot_id,recipient) present",
+      "schema.ts typed; no Timescale-object DDL introduced"
+    ]
+  },
+  {
+    "id": "P5-T05",
+    "title": "Engine-side auth primitives (password hashing + opaque session token)",
+    "files": [
+      "src/auth/password.ts",
+      "src/auth/session.ts"
+    ],
+    "dependsOn": [
+      "P5-T02"
+    ],
+    "parallelGroup": 3,
+    "description": "argon2 (or bcrypt) hash/verify; createSessionToken (opaque, returns token + sha256 hash), hashToken. Pure of Next.js; imported by the web facade. No IO beyond what session repo fns provide.",
+    "acceptanceCriteria": [
+      "hash/verify round-trips; wrong password fails",
+      "token hash is stable sha256; raw token never stored",
+      "unit tests cover hash verify + token hashing"
+    ]
+  },
+  {
+    "id": "P5-T06",
+    "title": "Repo additions — read queries + customer-keyed mutation wrappers + auth/billing/report repos",
+    "files": [
+      "src/db/repo.ts"
+    ],
+    "dependsOn": [
+      "P5-T02",
+      "P5-T03",
+      "P5-T04"
+    ],
+    "parallelGroup": 4,
+    "description": "ADD (additive only, no edits to existing fns): listReportSnapshots(customerId), getReportSnapshot(id) [returns customer_id], insertReportSnapshot, findPreviousOperatingRun(customerId, beforePlannedAt) filtering kind='operating' AND status='completed', sumLlmUsageForPeriod(customerId, start, end) over cost_daily, getSubscription/upsertSubscription/cancelAtPeriodEnd, listInvoices/insertInvoice/insertInvoiceLine, findAppUserByEmail/createSession/findSession (by token_hash, not expired), and the FAIL-CLOSED customer-keyed wrappers signClaimSourceForCustomer(claimId, customerId, by) and approveDeployRowForCustomer(assetId, customerId, by) which load the row, resolve owner (claim_source.customer_id / content_asset.customer_id via the queue's asset_id), reject when NULL or != customerId, then call the existing signClaimSource/approveDeployRow.",
+    "acceptanceCriteria": [
+      "findPreviousOperatingRun excludes failed/over_budget/partial runs",
+      "signClaimSourceForCustomer/approveDeployRowForCustomer throw a typed NotOwned error on NULL or mismatched owner and do NOT call the primitive",
+      "sumLlmUsageForPeriod reads cost_daily and returns null fail-closed when no data",
+      "existing repo fns unchanged; file compiles"
+    ]
+  },
+  {
+    "id": "P5-T07",
+    "title": "Web session layer — getServerSession, requireCustomerScope, requireStaff (fail-closed)",
+    "files": [
+      "apps/web/lib/session.ts",
+      "apps/web/lib/engine.server.ts"
+    ],
+    "dependsOn": [
+      "P5-T01",
+      "P5-T05",
+      "P5-T06"
+    ],
+    "parallelGroup": 5,
+    "description": "engine.server.ts starts with `import \"server-only\"` and re-exports assembleReport + the scoped repo reads/wrappers + toWireReport. session.ts: read httpOnly cookie -> hashToken -> findSession -> app_user -> { userId, customerId, role }. requireCustomerScope() returns customerId or redirects/403; requireStaff() requires role='staff'. customerId is NEVER read from client params. Implement toWireReport(report) Date->ISO in lib/wire.ts.",
+    "acceptanceCriteria": [
+      "No session -> redirect to login; non-staff with NULL customer_id -> 403",
+      "client component importing engine.server.ts is a build error (server-only)",
+      "toWireReport converts generatedAt and run timestamps to strings"
+    ]
+  },
+  {
+    "id": "P5-T08",
+    "title": "Auth UI — login page + credentials Server Action + cookie issuance",
+    "files": [
+      "apps/web/app/(auth)/login/page.tsx",
+      "apps/web/lib/actions/auth.ts"
+    ],
+    "dependsOn": [
+      "P5-T07"
+    ],
+    "parallelGroup": 6,
+    "description": "Email+password login form (dark token styling). Server Action verifies password (src/auth/password), creates an app_session, sets httpOnly/Secure/SameSite=Lax cookie with the opaque token. Logout clears the session row + cookie.",
+    "acceptanceCriteria": [
+      "Valid credentials set a session cookie and land on /",
+      "Invalid credentials show an error, set no cookie",
+      "Logout invalidates the session row so the cookie no longer authenticates"
+    ]
+  },
+  {
+    "id": "P5-T09",
+    "title": "Tenant-scoped read API routes (overview, reports, trends, evidence, billing)",
+    "files": [
+      "apps/web/app/api/overview/route.ts",
+      "apps/web/app/api/reports/route.ts",
+      "apps/web/app/api/reports/[snapshotId]/route.ts",
+      "apps/web/app/api/trends/route.ts",
+      "apps/web/app/api/evidence/[responseRawId]/route.ts",
+      "apps/web/app/api/billing/route.ts"
+    ],
+    "dependsOn": [
+      "P5-T07"
+    ],
+    "parallelGroup": 6,
+    "description": "Each handler: requireCustomerScope first. reports/[snapshotId] returns report_snapshot.report_json after customer_id ownership check (404 on mismatch). evidence/[responseRawId] returns answer_text after responseRaw.customer_id check (404). overview/trends read report_snapshot history. billing reads subscription+sumLlmUsageForPeriod+invoices. All responses pass through toWireReport where a RunReport is returned. No raw SQL.",
+    "acceptanceCriteria": [
+      "A snapshot/evidence id owned by another customer returns 404 (not 403, no existence leak)",
+      "All routes 302/401 without a session",
+      "Returned report payloads have string timestamps (WireRunReport)"
+    ]
+  },
+  {
+    "id": "P5-T10",
+    "title": "Design system components + charts (Recharts) on dark tokens",
+    "files": [
+      "apps/web/components/StatCard.tsx",
+      "apps/web/components/TrendChart.tsx",
+      "apps/web/components/SmrBarList.tsx",
+      "apps/web/components/CoverageMatrix.tsx",
+      "apps/web/components/BreakdownTable.tsx",
+      "apps/web/components/GapList.tsx",
+      "apps/web/components/DeltaBadge.tsx",
+      "apps/web/components/DisclosureFooter.tsx",
+      "apps/web/components/EvidenceDrawer.tsx",
+      "apps/web/components/UsageGauge.tsx",
+      "apps/web/components/FunnelCTA.tsx"
+    ],
+    "dependsOn": [
+      "P5-T01"
+    ],
+    "parallelGroup": 3,
+    "description": "Build the gpto-grounded component kit on dark tokens: tabular-nums metrics, single cyan brand ramp vs neutral competitor gray, flat 1px-border cards, Recharts thin 1.5px lines. Every metric component prop = a WireRunReport slice (no re-typed shapes). DisclosureFooter renders selfJudgeBiasDisclosure + the §0 no-guarantee line. EvidenceDrawer fetches /api/evidence/[id].",
+    "acceptanceCriteria": [
+      "Components type their props from @engine/domain (via WireRunReport) — no duplicated DTOs",
+      "Charts render with the dark/cyan palette, no rainbow/gradient/emoji",
+      "DisclosureFooter always shows the no-guarantee + self-judge-bias text"
+    ]
+  },
+  {
+    "id": "P5-T11",
+    "title": "Dashboard pages — Overview/Trends/Models/Languages/Competitors/Gaps/Reports + app shell",
+    "files": [
+      "apps/web/app/(app)/layout.tsx",
+      "apps/web/app/(app)/page.tsx",
+      "apps/web/app/(app)/trends/page.tsx",
+      "apps/web/app/(app)/models/page.tsx",
+      "apps/web/app/(app)/languages/page.tsx",
+      "apps/web/app/(app)/competitors/page.tsx",
+      "apps/web/app/(app)/gaps/page.tsx",
+      "apps/web/app/(app)/reports/page.tsx",
+      "apps/web/app/(app)/reports/[snapshotId]/page.tsx",
+      "apps/web/app/(app)/settings/page.tsx"
+    ],
+    "dependsOn": [
+      "P5-T09",
+      "P5-T10"
+    ],
+    "parallelGroup": 7,
+    "description": "layout.tsx = TenantGuard auth shell + sidebar. Pages are Server Components calling the read API / scoped repo via engine.server, rendering the components from T10. reports/[snapshotId] renders the immutable snapshot labeled 'as delivered'. Explicit empty/zero states (SMR 0% before-state).",
+    "acceptanceCriteria": [
+      "A logged-in customer sees only their own metrics; another tenant's data never appears",
+      "reports/[snapshotId] reads the snapshot (not a live recompute) and is labeled as-delivered",
+      "Zero-state copy renders when SMR=0"
+    ]
+  },
+  {
+    "id": "P5-T12",
+    "title": "Free-diagnostic funnel (public widget + result card) with cost cap",
+    "files": [
+      "apps/web/app/(marketing)/page.tsx",
+      "apps/web/app/(marketing)/diagnose/[runId]/page.tsx",
+      "apps/web/lib/actions/diagnose.ts"
+    ],
+    "dependsOn": [
+      "P5-T07",
+      "P5-T10"
+    ],
+    "parallelGroup": 7,
+    "description": "Public hero with URL/brand input. Server Action runs a baseline ONLY for the demo/lead-scoped customer (NOT an arbitrary cold URL — documented), with a per-IP/day hard cost cap tied to the §11 budget gate. Result page renders the baseline RunReport card (SMR, 5-LLM coverage strip, top-3 gaps gated, disclosures). Honest §0 line pinned.",
+    "acceptanceCriteria": [
+      "Widget produces a real RunReport for the demo customer (no fabricated numbers)",
+      "Per-IP/day cap blocks abusive repeat submissions",
+      "Result card shows the no-guarantee line + self-judge-bias disclosure"
+    ]
+  },
+  {
+    "id": "P5-T13",
+    "title": "Approval UI — claim sign-off + deploy approval (per-customer, fail-closed)",
+    "files": [
+      "apps/web/app/(app)/approvals/claims/page.tsx",
+      "apps/web/app/(app)/approvals/deploy/page.tsx",
+      "apps/web/lib/actions/approvals.ts",
+      "apps/web/components/ApprovalTable.tsx"
+    ],
+    "dependsOn": [
+      "P5-T07",
+      "P5-T06",
+      "P5-T10"
+    ],
+    "parallelGroup": 7,
+    "description": "claims page lists needs_human assets (listContentAssetsForSet) + unsigned claims (findClaimSources(customerId)); Sign action -> signClaimSourceForCustomer(claimId, customerId, sessionEmail) then regateAsset. deploy page lists the customer's queue rows; Approve -> approveDeployRowForCustomer(assetId, customerId, sessionEmail). Both via requireCustomerScope; revalidatePath after.",
+    "acceptanceCriteria": [
+      "Signing/approving a row owned by another tenant returns 404 and does not mutate",
+      "Sign re-gates affected assets at $0 (no LLM)",
+      "Reviewer/approver identity = session email recorded for §12 audit"
+    ]
+  },
+  {
+    "id": "P5-T14",
+    "title": "Staff console — §5.5 template review/activate/edit (staff-only)",
+    "files": [
+      "apps/web/app/(staff)/layout.tsx",
+      "apps/web/app/(staff)/templates/page.tsx",
+      "apps/web/lib/actions/templates.ts"
+    ],
+    "dependsOn": [
+      "P5-T07"
+    ],
+    "parallelGroup": 7,
+    "description": "requireStaff() shell. Lists industry_template rows (listIndustryTemplates/getIndustryTemplate) with status badges. Buttons call Server Actions invoking actionReviewed/actionActive/actionEdit from src/cli/reviewTemplate.ts (production repo + materialize port), passing the staff session email as `by`. Activate shows a confirm warning that it materializes YAML + upserts DB rows and demotes the industry's prior active template.",
+    "acceptanceCriteria": [
+      "A non-staff (customer) user is 403'd from /(staff)/* and cannot reach template actions",
+      "Activate enforces the §5.5 gate (InvalidStatusTransitionError on active-from-draft)",
+      "`by` = staff email is stamped on reviewed_by"
+    ]
+  },
+  {
+    "id": "P5-T15",
+    "title": "Weekly report automation — report.deliver job + snapshot persist + delivery sink",
+    "files": [
+      "src/scheduler/jobs.ts",
+      "src/scheduler/worker.ts",
+      "src/report/deliver.ts",
+      "src/report/deliverySink.ts",
+      "src/report/emailTemplate.ts"
+    ],
+    "dependsOn": [
+      "P5-T06"
+    ],
+    "parallelGroup": 4,
+    "description": "jobs.ts: add JOB_NAMES.REPORT_DELIVER, ReportDeliverPayloadSchema {runId,customerId}, DLQ_REPORT_DELIVER. worker.ts: register report.deliver handler; cycle.aggregate enqueues report.deliver (singletonKey report:${runId}) only on a successful operating-run aggregate; extend boot catch-up to enqueue report.deliver for completed operating runs lacking a report_snapshot. deliver.ts: assembleReport -> findPreviousOperatingRun (WoW) -> insertReportSnapshot -> render email -> DeliverySink.send -> insert report_delivery (idempotent). deliverySink.ts: interface + Resend/SMTP adapter + Noop dev sink. emailTemplate.ts: HTML from the RunReport DTO incl. disclosures.",
+    "acceptanceCriteria": [
+      "A delivered run persists exactly one report_snapshot (UNIQUE(run_id)) with report_json",
+      "Re-running report.deliver for the same run does not double-send (report_delivery UNIQUE) and does not error",
+      "WoW delta uses only a previous status='completed' operating run",
+      "baseline runs do NOT enqueue report.deliver"
+    ]
+  },
+  {
+    "id": "P5-T16",
+    "title": "Signed weekly-report permalink (tokened, no login)",
+    "files": [
+      "apps/web/app/r/[token]/page.tsx",
+      "apps/web/lib/actions/reportToken.ts"
+    ],
+    "dependsOn": [
+      "P5-T09",
+      "P5-T15"
+    ],
+    "parallelGroup": 8,
+    "description": "A signed, non-enumerable token bound to one report_snapshot's customer renders the as-delivered snapshot (the emailed link target) without a session. Token is verified server-side and scoped to that snapshot only.",
+    "acceptanceCriteria": [
+      "A valid token renders only its own snapshot",
+      "A tampered/!existing token returns 404",
+      "No other tenant data is reachable via the token"
+    ]
+  },
+  {
+    "id": "P5-T17",
+    "title": "Billing — pure pricing.ts, monthly close job, billing page",
+    "files": [
+      "src/billing/pricing.ts",
+      "src/billing/close.ts",
+      "src/billing/paymentProvider.ts",
+      "apps/web/app/(app)/billing/page.tsx",
+      "apps/web/lib/actions/billing.ts"
+    ],
+    "dependsOn": [
+      "P5-T06",
+      "P5-T10",
+      "P5-T03"
+    ],
+    "parallelGroup": 8,
+    "description": "pricing.ts: PURE priceForScope({questionCount,languageCount,models,samples}) -> base KRW (default conservative curve anchored to ~₩2M; curve flagged as business input), shared with apps/web. close.ts: monthly pg-boss billing.close cron sums cost_daily per customer into invoice/invoice_line, layering margin + USD->KRW FX + VAT; NULL-customer llm_call spend absorbed (not billed). paymentProvider.ts: seam (not built). billing page: plan+base, usage gauge, scope, projected/past invoices, '월단위·무약정 — 언제든 해지' panel calling cancelAtPeriodEnd, and the §0 no-guarantee caveat. Register BILLING_CLOSE in jobs/worker.",
+    "acceptanceCriteria": [
+      "pricing.ts is pure and imported by both engine and apps/web for an identical quote",
+      "close.ts writes invoice_line with separate base/overage(+margin,FX)/VAT and is idempotent per period (invoice UNIQUE)",
+      "NULL-customer llm_call rows are excluded from any tenant invoice",
+      "cancel-at-period-end sets the flag without immediate data loss"
+    ]
+  },
+  {
+    "id": "P5-T18",
+    "title": "Lock down legacy engine routes (remove public /smr/:runId and /diagnose)",
+    "files": [
+      "src/api/server.ts"
+    ],
+    "dependsOn": [
+      "P5-T09"
+    ],
+    "parallelGroup": 8,
+    "description": "Bind GET /smr/:runId and POST /diagnose to internal/ops only (e.g. behind an internal-network/ops guard or remove from the public server build) so the multi-tenant product exposes no unscoped report route. Keep /healthz and /providers. The customer surface is the Next.js tenant API; the demo widget uses the scoped Server Action, not the public Fastify /diagnose.",
+    "acceptanceCriteria": [
+      "GET /smr/:runId is no longer reachable as an unauthenticated public route",
+      "Engine ops/`npm run diagnose` CLI path still works for internal use",
+      "/healthz and /providers unchanged"
+    ]
+  },
+  {
+    "id": "P5-T19",
+    "title": "Tests — cross-tenant fail-closed, report delivery, billing",
+    "files": [
+      "test/web-scoping.test.ts",
+      "test/report-deliver.test.ts",
+      "test/billing-pricing.test.ts",
+      "test/billing-close.test.ts"
+    ],
+    "dependsOn": [
+      "P5-T11",
+      "P5-T13",
+      "P5-T14",
+      "P5-T15",
+      "P5-T17"
+    ],
+    "parallelGroup": 9,
+    "description": "web-scoping: cross-tenant 404 on reports/[snapshotId], /api/evidence, signClaimSourceForCustomer, approveDeployRowForCustomer; non-staff blocked from staff templates. report-deliver: snapshot persisted once, exactly-once delivery, WoW uses only completed operating runs, baseline does not deliver. billing: pricing curve determinism + shared-import parity; close idempotency, NULL-customer absorption, FX/VAT layering.",
+    "acceptanceCriteria": [
+      "Cross-tenant mutation/read attempts assert 404 (fail-closed) as the default",
+      "Re-running report.deliver asserts no double-send",
+      "billing tests assert no raw-USD-as-price and NULL-customer exclusion"
+    ]
+  }
+]

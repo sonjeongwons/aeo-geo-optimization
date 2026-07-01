@@ -1,0 +1,43 @@
+# --- secrets (NEVER commit) ---
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+
+# --- dependencies ---
+node_modules/
+**/node_modules/
+
+# --- build output ---
+dist/
+build/
+apps/web/.next/
+apps/web/out/
+**/.next/
+*.tsbuildinfo
+
+# --- test / coverage ---
+coverage/
+.vitest/
+
+# --- logs / tmp ---
+*.log
+logs/
+tmp/
+.DS_Store
+
+# --- IDE ---
+.vscode/
+.idea/
+
+# --- vercel ---
+.vercel
+
+# --- local throwaway configs / scratch ---
+config/customers/emora-mini.yaml
+
+# --- owned-net hub (separate GitHub Pages repo) + generated output ---
+.owned-net-hub/
+.owned-net-out/
+.owned-net/

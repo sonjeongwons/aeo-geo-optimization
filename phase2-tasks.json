@@ -1,0 +1,331 @@
+[
+  {
+    "id": "T01",
+    "title": "Scaffold src/content/ module + content-terms config + env ceiling",
+    "files": [
+      "src/content/index.ts",
+      "src/config/env.ts",
+      "config/content-terms/en.json",
+      "config/content-terms/ko.json",
+      "config/content-terms/ja.json",
+      "config/content-terms/README.md"
+    ],
+    "dependsOn": [],
+    "parallelGroup": 1,
+    "description": "Create the src/content/ module folder with a barrel index. Add CONTENT_RUN_CEILING_USD to the env zod schema (z.coerce.number().positive().default(2)) alongside the existing GLOBAL_*_USD_CAP (env.ts:48-49). Create config/content-terms/<lang>.json files with two controlled vocabularies per language: superlatives[] (unbounded marketing terms for §7#2) and disclosure_tags[] (allowed sponsored/affiliation strings for §7#6). Seed en/ko/ja now; README documents that these are a tracked maintenance liability and questionGuards SUPERLATIVE_PATTERNS is NOT reused (module-private + English-only).",
+    "acceptanceCriteria": [
+      "env.CONTENT_RUN_CEILING_USD parses with default 2 and is overridable",
+      "content-terms JSON files validate against a small zod loader schema {superlatives:string[],disclosure_tags:string[]}",
+      "no edit to any existing env var; tsc passes"
+    ]
+  },
+  {
+    "id": "T02",
+    "title": "Migration 0009 — Phase 2 PLAIN tables + budget columns",
+    "files": [
+      "src/db/migrations/0009_phase2_content.sql",
+      "src/db/schema.ts"
+    ],
+    "dependsOn": [],
+    "parallelGroup": 1,
+    "description": "Create migrations/0009_phase2_content.sql as a SINGLE PLAIN transactional .sql (no .cjs — no hypertable/CAGG/policy DDL). Create content_set, content_asset, claim_source, content_deploy_queue per the newMigrations spec (all PLAIN, single-table CHECKs only, idempotent IF NOT EXISTS). Add the natural-key UNIQUE index uq_content_asset_natural(content_set_id,phrasing_group_id,format,language,channel_class), ix_content_asset_gate, ix_content_asset_set, ix_claim_source_customer, uq_deploy_queue_asset. ALTER TABLE budget ADD COLUMN IF NOT EXISTS max_content_assets_per_run int, max_formats int, content_run_ceiling_usd numeric. Extend src/db/schema.ts with Kysely table types for all new tables + the budget columns.",
+    "acceptanceCriteria": [
+      "migration runs cleanly on a fresh DB and is idempotent on re-run",
+      "no hypertable/CAGG/cross-table CHECK introduced; all CHECKs single-table",
+      "schema.ts compiles and exposes ContentSet/ContentAsset/ClaimSource/ContentDeployQueue insert+select types",
+      "budget Kysely type includes the three new nullable columns"
+    ]
+  },
+  {
+    "id": "T03",
+    "title": "Content domain types + format body schemas + gate context/result types",
+    "files": [
+      "src/content/types.ts"
+    ],
+    "dependsOn": [
+      "T01"
+    ],
+    "parallelGroup": 2,
+    "description": "zod-first content domain in src/content/types.ts: ContentAsset envelope; ContentBody discriminated union on content_type (DefinitionSentence/AnswerBlock/Faq/Comparison/CaseStudy/JsonLd) — AnswerBlock carries length_units + numeric_claim_ids + source_ids; ClaimRecord {claim_id,claim_text,claim_kind,numeric?{value,unit,bound},span,resolved_source_id,verification}; ClaimSourceRow; ContentCell; ContentGenOptions; ContentGateContext {asset,siblings,brandAliases,claimSources}; ContentGateResult {action:'pass'|'block'|'needs_human',gate,reason?}; JsonLdSchema (discriminated on @type, allows the deferred-url token). A bare numeric token without a referenced claim_id must be unrepresentable in AnswerBlock.",
+    "acceptanceCriteria": [
+      "all schemas parse valid fixtures and reject malformed (missing numeric_claim_ids for a numbered answer block)",
+      "ContentGateResult action union includes block and needs_human (NOT the gate.ts GateResult)",
+      "JsonLdSchema accepts {url:{deferred:true,role:'owned_hub'},datePublished:null} and rejects a customer-domain url",
+      "tsc passes"
+    ]
+  },
+  {
+    "id": "T04",
+    "title": "Add GatePhase 'content' to gate.ts (additive, regression-tested)",
+    "files": [
+      "src/guardrails/gate.ts",
+      "test/gate-phase-content.test.ts"
+    ],
+    "dependsOn": [],
+    "parallelGroup": 1,
+    "description": "Make the ONLY gate.ts edit: widen GatePhase from 'measurement'|'publish' to 'measurement'|'publish'|'content' (gate.ts:26). Do NOT touch GateResult, GateContext, MutableVerdict, runGates, or GateRegistry. Add a regression test asserting runGates still only executes measurement/publish gates and ignores 'content'-phase gates, and that measurement-gate downgrade behavior is unchanged.",
+    "acceptanceCriteria": [
+      "GatePhase includes 'content'; no other gate.ts symbol changed",
+      "existing gate.ts tests still pass",
+      "new test proves a content-phase gate is skipped by runGates(...,'measurement',...)"
+    ]
+  },
+  {
+    "id": "T05",
+    "title": "Per-script word-count policy (134-167 band) + channel-content matrix",
+    "files": [
+      "src/content/wordCount.ts",
+      "src/content/channelContentMatrix.ts",
+      "test/wordCount-perscript.test.ts",
+      "test/channelContentMatrix.test.ts"
+    ],
+    "dependsOn": [
+      "T03"
+    ],
+    "parallelGroup": 2,
+    "description": "wordCount.ts: PURE deterministic length policy mapping the §6 134-167-WORD band to a per-script band — whitespace tokens for space-delimited scripts; a character band derived from per-script ratios (ja/zh ~1.6-2.4, ko ~2-3 chars/word) for ja/ko/zh/th. Export lengthInBand(text,language):boolean + computeLengthUnits(text,language):number. channelContentMatrix.ts: PURE table of legal format x channel_class (JSON-LD only owned_net; comparison not on social), requiresDisclosure(channel_class), and a PR-wire syndication fan-out descriptor so identical copy across syndicated outlets is not collapsed into one channel_class for dedup.",
+    "acceptanceCriteria": [
+      "a 150-word English block passes; a 10-char Korean block fails; a ~300-char Korean block in-band passes",
+      "computeLengthUnits is deterministic and never calls an LLM",
+      "channelContentMatrix marks jsonld_* legal only for owned_net and requiresDisclosure true for pr_wire/directory/web2/social"
+    ]
+  },
+  {
+    "id": "T06",
+    "title": "ContentMatrix builder (coverage+cost contract)",
+    "files": [
+      "src/content/contentMatrix.ts",
+      "test/contentMatrix.test.ts"
+    ],
+    "dependsOn": [
+      "T03",
+      "T05"
+    ],
+    "parallelGroup": 3,
+    "description": "PURE buildContentMatrix(brief, template, caps): cartesian {contentType x format x language x channel_class} filtered by channelContentMatrix, language-allocated weight-proportionally via sortByWeight (sampling/languageWeight.ts:26) reconciled from BrandBrief.detectedLanguages + customer_language, with low-weight thinning (definition + 1 answer_block). Clamp total assets to caps.max_content_assets_per_run and formats to caps.max_formats. Each ContentCell carries {contentType,format,language,channel_class,targetVariants,phrasingGroupSeed}. Return the matrix as the auditable artifact (printable summary).",
+    "acceptanceCriteria": [
+      "matrix never exceeds max_content_assets_per_run or max_formats",
+      "18-language capability but generation capped to the configured/weighted set (e.g. 14)",
+      "high-weight languages get more formats than low-weight (thinned) ones; pure/deterministic"
+    ]
+  },
+  {
+    "id": "T07",
+    "title": "Native per-(lang,format) prompt builder + per-language generation",
+    "files": [
+      "src/content/generationPromptContent.ts",
+      "src/content/generateContentForLanguage.ts",
+      "test/generateContentForLanguage.test.ts"
+    ],
+    "dependsOn": [
+      "T03",
+      "T06"
+    ],
+    "parallelGroup": 4,
+    "description": "generationPromptContent.ts: PURE per-(language,format) native prompt builder seeded by BrandBrief DESCRIPTORS + channel register descriptor (NEVER other-language strings / machine translation). generateContentForLanguage.ts: ONE adapter.generateStructured() call per language batched across its cells (mirrors generateQuestions.ts), over-generated ~1.3x (reuse OVER_GEN_FACTOR), returns assets {format,language,channel_class,body,phrasingGroupId,candidateClaims[]} + AdapterUsage; resilient (NOT_CONFIGURED/parse errors return ok:false, never throw). A structural guard rejects any output whose language != the requested cell language (proves native generation).",
+    "acceptanceCriteria": [
+      "one generateStructured call per language (not per format)",
+      "output language-tag mismatch is rejected",
+      "NOT_CONFIGURED returns ok:false and does not throw",
+      "returns real AdapterUsage for ledger/budget"
+    ]
+  },
+  {
+    "id": "T08",
+    "title": "Multilingual content orchestration (budget+ledger+partial-return)",
+    "files": [
+      "src/content/multilingualContent.ts",
+      "test/multilingualContent-alloc.test.ts",
+      "test/multilingualContent-partial-budget.test.ts"
+    ],
+    "dependsOn": [
+      "T07"
+    ],
+    "parallelGroup": 5,
+    "description": "multilingualContent.ts mirrors generate/multilingual.ts: group ContentCells by language, loop with budget.isWithinCeiling() check before each call, ledger spend via insertLlmCall({purpose:'generation',customerId,runId:null}), recordUsage after each call, graceful partial-return on QgenBudgetExceededError. Use createQgenBudget({runCeilingUsd: CONTENT_RUN_CEILING_USD}) — NOT the $0.50 default. Flag low-resource languages (default tl,vi,th) needs_native_review=true and force those assets toward needs_human downstream.",
+    "acceptanceCriteria": [
+      "budget exhaustion returns partial results without throwing to the caller",
+      "every call writes an llm_call row with purpose='generation'",
+      "low-resource-language assets carry needs_native_review=true",
+      "content ceiling (~$2) is used, asserted in a test"
+    ]
+  },
+  {
+    "id": "T09",
+    "title": "Claim extraction (Gemini extract/classify only)",
+    "files": [
+      "src/content/claimExtract.ts",
+      "test/claimExtract.test.ts"
+    ],
+    "dependsOn": [
+      "T03",
+      "T08"
+    ],
+    "parallelGroup": 6,
+    "description": "claimExtract.ts: a generateStructured() pass that extracts every customer factual claim from an asset body into ClaimRecord[] {claim_text,claim_kind,numeric?{value,unit,bound},span}. Gemini ONLY extracts/classifies — it never certifies truth and never sets verification. Ledgered + budgeted. Returns ok:false on NOT_CONFIGURED/parse failure (so the gate can fail closed). This pass is invoked by the gate fold AFTER the cheap structural gates.",
+    "acceptanceCriteria": [
+      "extracts numeric claims with parsed {value,unit,bound}",
+      "never sets ClaimRecord.verification (left 'unverified')",
+      "ok:false on extraction failure so callers can fail closed",
+      "ledgers spend as purpose='generation'"
+    ]
+  },
+  {
+    "id": "T10",
+    "title": "Deterministic claim verify (resolve+decide+backstop, unit-normalized bound)",
+    "files": [
+      "src/content/claimVerify.ts",
+      "test/claimVerify-numeric-bound.test.ts",
+      "test/claimVerify-failclosed.test.ts"
+    ],
+    "dependsOn": [
+      "T03",
+      "T09"
+    ],
+    "parallelGroup": 7,
+    "description": "claimVerify.ts: PURE deterministic. (1) BACKSTOP: independent raw-body scan (superlative lexicon + numeric regex) over the body; any flagged span with no matching extracted ClaimRecord -> needs_human. (2) RESOLVE: match each ClaimRecord to a claim_source row, STORE claim.resolved_source_id = that row id (structural binding, no substring stamp); numeric claims must satisfy a UNIT/SCALE-NORMALIZED bound compare against the source's typed {numeric_value,numeric_unit,numeric_bound} (30% vs 'up to 50%' fails; 2x vs 200% normalizes). (3) DECIDE: all verified -> pass; unresolved superlative/comparative OR unsigned customer_attested OR backstop-flagged-unextracted -> needs_human; numeric exceeding normalized bound -> block. FAIL CLOSED: claims present but extraction empty/failed while backstop found spans -> needs_human, never pass. No auto-pass path trusts an LLM-authored in-asset source.",
+    "acceptanceCriteria": [
+      "a claim resolving to a source stores resolved_source_id = the exact row id",
+      "numeric over the normalized bound -> block; 30% vs attested 'up to 50%' -> not auto-pass",
+      "empty/failed extraction with a backstop-detected numeric -> needs_human (fail closed)",
+      "superlative with no source row never auto-passes; pure/deterministic, no LLM"
+    ]
+  },
+  {
+    "id": "T11",
+    "title": "The five §7 content gates (structural) + jsonLdShape gate",
+    "files": [
+      "src/content/gates/phrasingVariation.ts",
+      "src/content/gates/verifiableNumbers.ts",
+      "src/content/gates/noFakeSignals.ts",
+      "src/content/gates/disclosure.ts",
+      "src/content/gates/claimVerification.ts",
+      "src/content/gates/jsonLdShape.ts",
+      "test/phrasingVariation-cjk.test.ts",
+      "test/verifiableNumbers.test.ts",
+      "test/noFakeSignals.test.ts",
+      "test/disclosure.test.ts",
+      "test/jsonld-shape.test.ts"
+    ],
+    "dependsOn": [
+      "T03",
+      "T05",
+      "T10"
+    ],
+    "parallelGroup": 8,
+    "description": "phrasingVariation (§7#1): import dedup.ts normalizeText/trigramJaccard; max similarity against ALL OTHER same-language assets in ctx.siblings (NOT scoped to phrasing_group_id), cross-language exempt; block if >= CONTENT_DUP_THRESHOLD (config constant, fixture-tuned on long blocks, documented as needing emora/k-beauty tuning). verifiableNumbers (§7#2): per-language superlative lexicon (config/content-terms) + every numeric token must resolve to a claims[] ClaimRecord with resolved_source_id. noFakeSignals (§7#3): structural — reject review/testimonial/vote-count scaffolding + unsourced usage-count claims (community/review channel_class already excluded by enum). disclosure (§7#6): channel_class in {pr_wire,directory,web2,social} must carry a non-null disclosure_tag from the controlled vocab. claimVerification (§7#7): wraps claimVerify + claimExtract, fail-closed. jsonLdShape (content_type='jsonld' only): assert @context/@type/required-fields + deferred-url token shape + RE-RUN superlative+numeric checks over nested JSON-LD strings.",
+    "acceptanceCriteria": [
+      "phrasing gate blocks cross-meaning boilerplate copy-paste in the same language, exempts cross-language pairs",
+      "verifiableNumbers blocks a bare unsourced number and an unbounded superlative",
+      "disclosure blocks a pr_wire asset with null disclosure_tag",
+      "jsonLdShape blocks a 'best-in-class' string inside articleBody",
+      "CONTENT_DUP_THRESHOLD is a single config constant referenced by the gate"
+    ]
+  },
+  {
+    "id": "T12",
+    "title": "runContentGates non-short-circuit fold + retire publish stubs",
+    "files": [
+      "src/content/contentGate.ts",
+      "src/guardrails/publishStubs.ts",
+      "test/contentGate-fold-collect-all.test.ts",
+      "test/publishStubs-retired.test.ts"
+    ],
+    "dependsOn": [
+      "T04",
+      "T11"
+    ],
+    "parallelGroup": 9,
+    "description": "contentGate.ts: ContentGate interface (phase:'content'), a content GateRegistry, and runContentGates(gates,ctx) that runs cheap structural gates first then the paid claim-verification, collects ALL verdicts into gate_report (NON-short-circuit), then derives terminal gate_status = blocked if any block, else needs_human if any needs_human, else passed. publishStubs.ts: retire phrasingVariationGate/claimVerificationGate/disclosureGate — re-point them at the content fold or remove them from the active publish list; ensure no PHASE_0_NOOP verdict is ever produced for a content asset.",
+    "acceptanceCriteria": [
+      "runContentGates records a verdict for EVERY gate even when an earlier gate blocks (full §12 audit)",
+      "terminal status precedence block > needs_human > passed is correct",
+      "paid claim-extraction is not invoked for an asset already blocked by a cheap gate",
+      "publishStubs-retired test asserts no PHASE_0_NOOP path remains for content gating"
+    ]
+  },
+  {
+    "id": "T13",
+    "title": "Pure deterministic JSON-LD builders (owned-net, deferred-url)",
+    "files": [
+      "src/content/jsonld.ts",
+      "test/jsonld-deferred-url.test.ts",
+      "test/jsonld-builders.test.ts"
+    ],
+    "dependsOn": [
+      "T03"
+    ],
+    "parallelGroup": 4,
+    "description": "jsonld.ts: PURE builders organizationJsonLd(brief), faqPageJsonLd(faqAsset), articleJsonLd(answerBlockAsset|caseStudy) for owned_net assets ONLY (no LLM). url/sameAs use verified entity URLs from claim_source only; the owned-hub url + datePublished emit a typed DEFERRED token validated by JsonLdSchema. Never write the customer domain (§0). Output stored as content_type='jsonld' assets linked by phrasing_group_id.",
+    "acceptanceCriteria": [
+      "builders are pure (no network/LLM) and validate against JsonLdSchema",
+      "Organization.url is the deferred owned-hub token, never the customer domain",
+      "FAQPage mainEntity is derived 1:1 from an already-gated faq asset",
+      "inLanguage matches the source asset language"
+    ]
+  },
+  {
+    "id": "T14",
+    "title": "Repo extensions + claim_source seeding from BrandBrief",
+    "files": [
+      "src/db/repo.ts",
+      "test/repo-content.integration.test.ts"
+    ],
+    "dependsOn": [
+      "T02",
+      "T03"
+    ],
+    "parallelGroup": 5,
+    "description": "Extend repo.ts ADDITIVELY (no existing signature touched): insertContentSet, insertContentAsset, listContentAssetsForSet, listContentAssetsForDedup(setId,language), updateAssetGateStatus, queuePassedAssets (select gate_status='passed' AND not in content_deploy_queue -> insert queue rows), insertClaimSource, seedClaimSourcesFromBrief(customerId,brief) (non-superlative productAttributes -> customer_attested rows awaiting sign-off), findClaimSources(customerId), signClaimSource(id,verifiedBy). Reuse getLatestActiveTemplate/findBudget/sumCostSince/insertLlmCall as-is.",
+    "acceptanceCriteria": [
+      "seedClaimSourcesFromBrief inserts non-superlative attributes as customer_attested rows with verified_by NULL",
+      "queuePassedAssets only queues gate_status='passed' assets and is idempotent (uq_deploy_queue_asset)",
+      "no existing repo signature changed; integration test runs against a migrated DB"
+    ]
+  },
+  {
+    "id": "T15",
+    "title": "assembleContentSet + queueForDeploy (the §0/Phase-3 seam)",
+    "files": [
+      "src/content/assembleContentSet.ts",
+      "src/content/queueForDeploy.ts",
+      "test/gateStatus-queue.test.ts"
+    ],
+    "dependsOn": [
+      "T08",
+      "T12",
+      "T13",
+      "T14"
+    ],
+    "parallelGroup": 10,
+    "description": "assembleContentSet.ts: combine multilingual generation -> ContentAsset rows, re-validate bodies vs schema (length band enforced), build JSON-LD assets, run runContentGates over each asset (siblings = same-set same-language + already-passed), persist via repo with terminal gate_status + gate_report. queueForDeploy.ts: select gate_status='passed' AND not-yet-queued -> insert content_deploy_queue rows. NO HTTP-write verb anywhere; never writes a customer property (§0).",
+    "acceptanceCriteria": [
+      "only gate_status='passed' assets become queue rows; blocked/needs_human are not selectable",
+      "the generator never emits gate_status='passed' except via the fold result",
+      "module exposes no deploy/HTTP-write function (§0 structural)",
+      "re-gate after a claim sign-off is $0 (no LLM call)"
+    ]
+  },
+  {
+    "id": "T16",
+    "title": "CLI: genContent / gateContent / reviewClaims / queueContent",
+    "files": [
+      "src/cli/genContent.ts",
+      "src/cli/gateContent.ts",
+      "src/cli/reviewClaims.ts",
+      "src/cli/queueContent.ts",
+      "test/genContent.integration.test.ts"
+    ],
+    "dependsOn": [
+      "T15"
+    ],
+    "parallelGroup": 11,
+    "description": "genContent.ts (--customer/--industry [--formats --languages --total]): load ACTIVE template via getLatestActiveTemplate + seedClaimSourcesFromBrief, build matrix, generate, assemble+gate -> pending/terminal assets; print the coverage+cost contract before spend. gateContent.ts: run content gates over a set -> passed/blocked/needs_human. reviewClaims.ts: list needs_human claims, human sign-off -> signClaimSource + re-gate ($0). queueContent.ts: queue passed assets. All honor the per-customer caps + content ceiling.",
+    "acceptanceCriteria": [
+      "genContent refuses to exceed max_content_assets_per_run/max_formats and the content run ceiling",
+      "reviewClaims sign-off flips a needs_human asset to passed on re-gate without an LLM call",
+      "an integration run against a migrated DB with a fake adapter produces gated assets and a deploy queue",
+      "genContent prints the matrix (coverage+cost) before any token spend"
+    ]
+  }
+]

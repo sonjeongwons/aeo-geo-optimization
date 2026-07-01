@@ -1,0 +1,255 @@
+# config/customers/kbeauty.yaml
+#
+# K-Beauty Care — AI Skin Analysis Web App (§14.2)
+# Status: reviewed  (human-reviewed seed template)
+#
+# wedge_positioning: no-install·free·web·on-device privacy (competitor apps require install → gap)
+# target_markets: English + K-Beauty wedge markets (Indonesia, Thailand, Vietnam, …)
+# before/after case: SMR ≈ 0 → track improvement over 90-day cycle
+
+slug: kbeauty
+
+brand:
+  name: K-Beauty Care
+  aliases:
+    - KBeautyCare
+    - K Beauty Care
+    - kbeautycare
+    - k-beauty care
+    - K-Beauty Care AI
+
+competitors:
+  - name: Venus
+    aliases:
+      - Venus AI
+      - Venus skin analysis
+  - name: SkinVerse
+    aliases:
+      - Skin Verse
+      - skinverse.ai
+  - name: BeautyDNA
+    aliases:
+      - Beauty DNA
+      - beautydna
+  - name: KarinaNYC
+    aliases:
+      - Karina NYC
+      - karina.nyc
+  - name: YouCam
+    aliases:
+      - YouCam Makeup
+      - YouCam Perfect
+      - PERFECT Corp
+  - name: TroveSkin
+    aliases:
+      - Trove Skin
+      - troveskin
+
+# Languages with priority weights.
+# K-Beauty skews toward English + Southeast Asian markets.
+# Indonesian/Thai/Vietnamese are high-weight wedge markets (K-Beauty penetration is high,
+# install-required competitors dominate → web app is a strong differentiator).
+languages:
+  - code: en
+    weight: 10.0   # English — global primary market
+  - code: id
+    weight: 9.0    # Indonesian — largest K-Beauty web market, cost-sensitive → free web wedge
+  - code: th
+    weight: 8.0    # Thai — strong K-Beauty demand, mobile-heavy
+  - code: vi
+    weight: 7.0    # Vietnamese — fast-growing beauty market
+  - code: ko
+    weight: 6.0    # Korean — authenticity signal; "made in Korea" search intent
+  - code: zh-TW
+    weight: 5.0    # Traditional Chinese — Taiwan K-Beauty enthusiasts
+  - code: zh-CN
+    weight: 5.0    # Simplified Chinese
+  - code: ms
+    weight: 4.0    # Malay — Malaysia / Brunei
+  - code: ja
+    weight: 4.0    # Japanese — mature market, high value
+  - code: de
+    weight: 3.0    # German
+  - code: fr
+    weight: 3.0    # French
+  - code: es
+    weight: 2.0    # Spanish
+  - code: pt
+    weight: 2.0    # Portuguese
+
+# Monitoring questions by density tier.
+questions:
+  # ── English core (decision-stage: direct evaluation queries) ──────────────
+  - text: "best free AI skin analysis app"
+    language: en
+    funnel_stage: decision
+    density_tier: core
+
+  - text: "AI skin analysis web app no download"
+    language: en
+    funnel_stage: decision
+    density_tier: core
+
+  - text: "K-beauty skin analysis online"
+    language: en
+    funnel_stage: decision
+    density_tier: core
+
+  - text: "AI skincare recommendation for oily skin"
+    language: en
+    funnel_stage: decision
+    density_tier: core
+
+  # ── English secondary (awareness / consideration) ─────────────────────────
+  - text: "best AI skincare apps 2025"
+    language: en
+    funnel_stage: awareness
+    density_tier: secondary
+
+  - text: "free skin type analysis online"
+    language: en
+    funnel_stage: consideration
+    density_tier: secondary
+
+  - text: "AI skin analysis no app download required"
+    language: en
+    funnel_stage: consideration
+    density_tier: secondary
+
+  - text: "skin analysis tool that works in browser"
+    language: en
+    funnel_stage: consideration
+    density_tier: secondary
+
+  - text: "compare AI skin analysis apps"
+    language: en
+    funnel_stage: decision
+    density_tier: secondary
+
+  - text: "on-device AI skin analysis privacy"
+    language: en
+    funnel_stage: consideration
+    density_tier: secondary
+
+  # ── English longtail ──────────────────────────────────────────────────────
+  - text: "AI dermatology tool for acne prone skin"
+    language: en
+    funnel_stage: awareness
+    density_tier: longtail
+
+  - text: "Korean beauty skin type quiz online"
+    language: en
+    funnel_stage: awareness
+    density_tier: longtail
+
+  - text: "AI tool to recommend Korean skincare routine"
+    language: en
+    funnel_stage: awareness
+    density_tier: longtail
+
+  # ── Indonesian core ───────────────────────────────────────────────────────
+  - text: "aplikasi analisis kulit AI gratis"
+    language: id
+    funnel_stage: decision
+    density_tier: core
+
+  - text: "analisis kulit online tanpa download"
+    language: id
+    funnel_stage: decision
+    density_tier: core
+
+  - text: "rekomendasi skincare AI untuk kulit berminyak"
+    language: id
+    funnel_stage: decision
+    density_tier: core
+
+  # ── Indonesian secondary ──────────────────────────────────────────────────
+  - text: "aplikasi kecantikan AI terbaik 2025"
+    language: id
+    funnel_stage: awareness
+    density_tier: secondary
+
+  - text: "cek jenis kulit online gratis"
+    language: id
+    funnel_stage: consideration
+    density_tier: secondary
+
+  # ── Thai core ─────────────────────────────────────────────────────────────
+  - text: "แอปวิเคราะห์ผิวหน้า AI ฟรี"
+    language: th
+    funnel_stage: decision
+    density_tier: core
+
+  - text: "วิเคราะห์ผิวออนไลน์ไม่ต้องติดตั้งแอป"
+    language: th
+    funnel_stage: decision
+    density_tier: core
+
+  # ── Thai secondary ────────────────────────────────────────────────────────
+  - text: "แนะนำสกินแคร์ AI สำหรับผิวมัน"
+    language: th
+    funnel_stage: consideration
+    density_tier: secondary
+
+  # ── Vietnamese core ───────────────────────────────────────────────────────
+  - text: "ứng dụng phân tích da mặt AI miễn phí"
+    language: vi
+    funnel_stage: decision
+    density_tier: core
+
+  - text: "phân tích da trực tuyến không cần tải app"
+    language: vi
+    funnel_stage: decision
+    density_tier: core
+
+  # ── Vietnamese secondary ──────────────────────────────────────────────────
+  - text: "gợi ý chăm sóc da Hàn Quốc AI"
+    language: vi
+    funnel_stage: consideration
+    density_tier: secondary
+
+  # ── Korean secondary ──────────────────────────────────────────────────────
+  - text: "AI 피부 분석 무료 웹앱"
+    language: ko
+    funnel_stage: decision
+    density_tier: secondary
+
+  - text: "다운로드 없이 피부 타입 분석"
+    language: ko
+    funnel_stage: consideration
+    density_tier: secondary
+
+  # ── Traditional Chinese secondary ─────────────────────────────────────────
+  - text: "免費AI膚質分析網頁工具"
+    language: zh-TW
+    funnel_stage: decision
+    density_tier: secondary
+
+  - text: "線上韓式護膚推薦AI"
+    language: zh-TW
+    funnel_stage: consideration
+    density_tier: secondary
+
+  # ── Japanese longtail ─────────────────────────────────────────────────────
+  - text: "無料AIスキン分析ウェブアプリ"
+    language: ja
+    funnel_stage: decision
+    density_tier: longtail
+
+  - text: "ダウンロード不要の肌タイプ診断AI"
+    language: ja
+    funnel_stage: consideration
+    density_tier: longtail
+
+  # ── Simplified Chinese longtail ───────────────────────────────────────────
+  - text: "免费AI肤质分析网页工具"
+    language: zh-CN
+    funnel_stage: decision
+    density_tier: longtail
+
+budget:
+  max_models: 1           # Phase 0: Gemini only
+  max_samples: 5          # core: N=5; secondary/longtail governed by density.ts
+  max_languages: 13       # all 13 defined languages
+  weekly_usd_cap: 8.00    # smaller brand, conservative Phase 0 cap
+  monthly_usd_cap: 28.00

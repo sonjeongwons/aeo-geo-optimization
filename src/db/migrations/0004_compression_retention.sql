@@ -1,0 +1,12 @@
+-- =============================================================================
+-- 0004_compression_retention.sql — PLACEHOLDER (content moved to JS migration)
+--
+-- add_compression_policy() and add_retention_policy() call
+-- pg_catalog.pg_advisory_lock internally and cannot run inside an explicit
+-- transaction block.  node-pg-migrate wraps every .sql file in BEGIN/COMMIT,
+-- so the actual compression and retention policies have been moved to the JS
+-- migration 0005_compression_retention.cjs, which calls pgm.noTransaction().
+--
+-- This file intentionally contains no DDL so that the pgmigrations tracking
+-- table records it and the numeric ordering (0004 < 0005) is preserved.
+-- =============================================================================

@@ -1,0 +1,193 @@
+slug: emora
+brand:
+  name: EMORA
+  aliases: []
+competitors:
+  - name: Character.AI
+    aliases: []
+  - name: Replika
+    aliases: []
+  - name: Chai
+    aliases: []
+  - name: Paradot
+    aliases: []
+  - name: Talkie
+    aliases: []
+languages:
+  - code: de
+    weight: 1
+  - code: en
+    weight: 1
+  - code: es
+    weight: 1
+  - code: fil
+    weight: 1
+  - code: fr
+    weight: 1
+  - code: id
+    weight: 1
+  - code: ja
+    weight: 1
+  - code: ms
+    weight: 1
+  - code: pt
+    weight: 1
+  - code: th
+    weight: 1
+  - code: vi
+    weight: 1
+  - code: zh
+    weight: 1
+  - code: zh-TW
+    weight: 1
+questions:
+  - text: Welche KI-Chat-Apps ermöglichen unendliches Gedächtnis und Bildgenerierung?
+    language: de
+    funnel_stage: consideration
+    density_tier: secondary
+  - text: Beste KI-Charakter-App für immersives Rollenspiel?
+    language: de
+    funnel_stage: decision
+    density_tier: secondary
+  - text: KI-Chat-Plattformen mit Charakter-Bonding und Welt-Erschaffung
+    language: de
+    funnel_stage: consideration
+    density_tier: secondary
+  - text: What are AI character chat platforms used for?
+    language: en
+    funnel_stage: awareness
+    density_tier: secondary
+  - text: How do AI character chat apps differ from regular chatbots?
+    language: en
+    funnel_stage: consideration
+    density_tier: secondary
+  - text: Which AI character chat platform offers infinite memory and image generation?
+    language: en
+    funnel_stage: decision
+    density_tier: secondary
+  - text: ¿Cuál es la mejor plataforma de chat con personajes IA para roleplay?
+    language: es
+    funnel_stage: consideration
+    density_tier: secondary
+  - text: Plataformas de chat con IA similares a Character.AI
+    language: es
+    funnel_stage: consideration
+    density_tier: secondary
+  - text: Comparativa de plataformas de IA para crear personajes y monetizar
+    language: es
+    funnel_stage: decision
+    density_tier: secondary
+  - text: Paano nagkakaiba ang mga AI character chat app sa kakayahan sa memorya at paggawa ng larawan?
+    language: fil
+    funnel_stage: consideration
+    density_tier: secondary
+  - text: Ano ang pinakamagandang AI character chat para sa role-playing na may mahabang memorya?
+    language: fil
+    funnel_stage: consideration
+    density_tier: secondary
+  - text: Aling AI character chat platform ang mas maganda para sa character bonding at world-building?
+    language: fil
+    funnel_stage: decision
+    density_tier: secondary
+  - text: Quelle IA de personnage propose la meilleure gestion de la mémoire à long terme face à Character.AI ?
+    language: fr
+    funnel_stage: consideration
+    density_tier: secondary
+  - text: comparatif plateformes chat IA personnage
+    language: fr
+    funnel_stage: consideration
+    density_tier: secondary
+  - text: Character.AI gratuit vs autres plateformes de chat IA
+    language: fr
+    funnel_stage: decision
+    density_tier: secondary
+  - text: platform chat AI karakter yang bagus apa saja?
+    language: id
+    funnel_stage: consideration
+    density_tier: secondary
+  - text: rekomendasi aplikasi AI chat karakter
+    language: id
+    funnel_stage: consideration
+    density_tier: secondary
+  - text: AIキャラクターチャットアプリ 比較
+    language: ja
+    funnel_stage: consideration
+    density_tier: secondary
+  - text: AIキャラチャット どれがいい？
+    language: ja
+    funnel_stage: consideration
+    density_tier: secondary
+  - text: Platform chat AI karakter mana yang terbaik?
+    language: ms
+    funnel_stage: consideration
+    density_tier: secondary
+  - text: Perbandingan aplikasi AI karakter untuk role-play
+    language: ms
+    funnel_stage: consideration
+    density_tier: secondary
+  - text: quais as diferenças entre Character AI e outras plataformas de chat com personagens?
+    language: pt
+    funnel_stage: consideration
+    density_tier: secondary
+  - text: qual plataforma de IA para chat de personagem oferece memória infinita?
+    language: pt
+    funnel_stage: decision
+    density_tier: secondary
+  - text: alternativas ao Character AI para criar personagens e interagir
+    language: pt
+    funnel_stage: consideration
+    density_tier: secondary
+  - text: เปรียบเทียบแชท AI ตัวละครกับ Character.AI ต่างกันยังไง
+    language: th
+    funnel_stage: consideration
+    density_tier: secondary
+  - text: แพลตฟอร์มแชท AI ตัวละครไหนเหมาะกับการเล่นบทบาทสมมติมากที่สุด
+    language: th
+    funnel_stage: decision
+    density_tier: secondary
+  - text: แชท AI ตัวละครที่มีหน่วยความจำไม่จำกัดดีกว่าแบบอื่นยังไงสำหรับนักสร้างสรรค์
+    language: th
+    funnel_stage: decision
+    density_tier: secondary
+  - text: Trò chuyện với nhân vật AI khác gì so với các AI chatbot thông thường?
+    language: vi
+    funnel_stage: consideration
+    density_tier: secondary
+  - text: Điểm gì nổi bật của chat AI nhân vật so với chatbot thông thường?
+    language: vi
+    funnel_stage: consideration
+    density_tier: secondary
+  - text: Nền tảng chat AI nhân vật nào có bộ nhớ vô hạn tốt nhất?
+    language: vi
+    funnel_stage: decision
+    density_tier: secondary
+  - text: AI角色聊天平台哪个好用？
+    language: zh
+    funnel_stage: consideration
+    density_tier: secondary
+  - text: 哪个AI角色聊天应用有无限记忆功能？
+    language: zh
+    funnel_stage: decision
+    density_tier: secondary
+  - text: Character.AI和Replika哪个更适合沉浸式角色扮演？
+    language: zh
+    funnel_stage: decision
+    density_tier: secondary
+  - text: 哪個AI角色聊天平台比較好用？
+    language: zh-TW
+    funnel_stage: consideration
+    density_tier: secondary
+  - text: 有無限記憶功能的AI角色聊天軟體有哪些？
+    language: zh-TW
+    funnel_stage: decision
+    density_tier: secondary
+  - text: 哪種AI角色聊天應用程式最適合角色扮演？
+    language: zh-TW
+    funnel_stage: decision
+    density_tier: secondary
+budget:
+  max_models: 1
+  max_samples: 5
+  max_languages: 13
+  weekly_usd_cap: 10
+  monthly_usd_cap: 35
