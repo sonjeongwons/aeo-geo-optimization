@@ -1,0 +1,57 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+
+    # TimescaleDB service — the app requires the timescaledb extension
+    # (hypertables + continuous aggregates + compression/retention), so a plain
+    # Postgres image is not enough.
+    services:
+      timescaledb:
+        image: timescale/timescaledb-ha:pg16
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: aeo_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 20
+
+    env:
+      DATABASE_URL: postgres://postgres:postgres@localhost:5432/aeo_test
+      LOG_LEVEL: warn
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies (root + workspaces)
+        run: npm ci
+
+      - name: Run DB migrations (engine schema on TimescaleDB)
+        run: npm run migrate
+
+      - name: Typecheck engine (tsc --noEmit)
+        run: npm run build
+
+      - name: Typecheck dashboard (apps/web)
+        run: npm --workspace apps/web run typecheck --if-present || (cd apps/web && npx tsc --noEmit)
+
+      - name: Test suite (vitest)
+        run: npm test
