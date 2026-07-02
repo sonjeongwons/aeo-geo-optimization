@@ -28,7 +28,8 @@ jobs:
       GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
       GEMINI_GROUNDING_SAMPLE_PCT: ${{ github.event.inputs.grounding_pct || '3' }}
       LOG_LEVEL: info
-      CUSTOMER: ${{ github.event.inputs.customer || 'emora' }}
+      # Space-separated list of customer slugs; dispatch input overrides.
+      CUSTOMERS: ${{ github.event.inputs.customer || 'emora smimdate' }}
     steps:
       - name: Guard — require DATABASE_URL (skip gracefully until armed)
         id: guard
@@ -52,22 +53,27 @@ jobs:
       - name: Apply migrations (idempotent)
         if: steps.guard.outputs.armed == 'true'
         run: npm run migrate
-      - name: Run measurement cycle
-        if: steps.guard.outputs.armed == 'true'
-        run: npm run diagnose -- --customer "$CUSTOMER" > report.json 2> diagnose.log || (tail -40 diagnose.log; exit 1)
-      - name: Summarize
+      - name: Run measurement cycle (each customer, sequential — shared Gemini budget)
         if: steps.guard.outputs.armed == 'true'
         run: |
-          node -e '
-            const fs=require("fs");const t=fs.readFileSync("report.json","utf8").split(/\r?\n/);
-            let s=-1;for(let i=t.length-1;i>=0;i--)if(t[i]==="{"){s=i;break;}
-            let e=-1;for(let i=s+1;i<t.length;i++)if(t[i]==="}"){e=i;break;}
-            const r=JSON.parse(t.slice(s,e+1).join("\n"));
-            console.log("runId",r.runId,"| smr",r.smr?.value,"| nTotal",r.smr?.nTotal,"| earnedDomains",(r.earnedSources?.domains||[]).length);
-          '
+          for c in $CUSTOMERS; do
+            echo "::group::measure $c"
+            npm run diagnose -- --customer "$c" > "report-$c.json" 2> "diagnose-$c.log" || { echo "FAILED $c"; tail -40 "diagnose-$c.log"; }
+            node -e '
+              const fs=require("fs");const f=process.argv[1];
+              try{const t=fs.readFileSync(f,"utf8").split(/\r?\n/);
+              let s=-1;for(let i=t.length-1;i>=0;i--)if(t[i]==="{"){s=i;break;}
+              let e=-1;for(let i=s+1;i<t.length;i++)if(t[i]==="}"){e=i;break;}
+              const r=JSON.parse(t.slice(s,e+1).join("\n"));
+              console.log(process.argv[2],"| runId",r.runId,"| smr",r.smr?.value,"| nTotal",r.smr?.nTotal,"| earnedDomains",(r.earnedSources?.domains||[]).length);
+              }catch(err){console.log(process.argv[2],"| no report parsed");}
+            ' "report-$c.json" "$c"
+            echo "::endgroup::"
+          done
       - name: Upload report artifact
         if: steps.guard.outputs.armed == 'true'
         uses: actions/upload-artifact@v4
         with:
-          name: run-report
-          path: report.json
+          name: run-reports
+          path: report-*.json
+          if-no-files-found: ignore

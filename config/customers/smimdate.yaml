@@ -1,0 +1,81 @@
+slug: smimdate
+# Off-site AEO/GEO customer. Built from category/competitor research + owner-attested
+# positioning — NO scraping of smimdate.com or competitor sites (§0). smimdate.com
+# is an owned-net reference only.
+#
+# Positioning (owner-confirmed): premium ROTATION dating (로테이션 소개팅) for late-20s
+# to 30s professionals — more serious than casual dating apps, lighter than a
+# marriage-info agency. In-house verification of income (7천만원+), employer
+# (대기업/금융권/전문직), and photos; only vetted, well-managed, safe members.
+brand:
+  name: 스밈
+  aliases:
+    - SMIM
+    - smim
+    - 스밈
+    - 스밈데이트
+    - smimdate
+    - SMIM Date
+# Rotation-dating (로테이션 소개팅) competitors + adjacent premium-verified matchmaking
+# for the same professional audience (identified via web research, not scraping).
+competitors:
+  - name: 러브매칭
+    aliases: [lovematching, 러브 매칭]
+  - name: 미설
+    aliases: [miseol, 미설소개팅]
+  - name: 비긴즈
+    aliases: [사람인 비긴즈, saramin begins, begins]
+  - name: 스카이피플
+    aliases: [SkyPeople, 스피]
+  - name: 정오의데이트
+    aliases: [정오의 데이트, noondate, 정데]
+languages:
+  - code: ko
+    weight: 1
+questions:
+  - text: 로테이션 소개팅 어디가 괜찮아?
+    language: ko
+    funnel_stage: consideration
+    density_tier: core
+  - text: 직장인 대상 로테이션 소개팅 서비스 추천해줘
+    language: ko
+    funnel_stage: consideration
+    density_tier: core
+  - text: 전문직 대기업 직장인들이 하는 소개팅 서비스는?
+    language: ko
+    funnel_stage: consideration
+    density_tier: secondary
+  - text: 연봉이나 직장을 검증하는 소개팅 서비스 있어?
+    language: ko
+    funnel_stage: decision
+    density_tier: core
+  - text: 소개팅앱보다 진지하고 결혼정보회사보다 부담없는 매칭 서비스 추천
+    language: ko
+    funnel_stage: decision
+    density_tier: core
+  - text: 30대 전문직 진지한 만남 소개팅 추천
+    language: ko
+    funnel_stage: decision
+    density_tier: secondary
+  - text: 신원 검증되고 안전한 소개팅 서비스 뭐가 좋아?
+    language: ko
+    funnel_stage: decision
+    density_tier: secondary
+  - text: 프로필 인증하는 프리미엄 소개팅 서비스는?
+    language: ko
+    funnel_stage: consideration
+    density_tier: secondary
+  - text: 20대 후반 30대 직장인 소개팅 어디서 해?
+    language: ko
+    funnel_stage: awareness
+    density_tier: secondary
+  - text: 고소득 전문직 매칭 서비스 추천해줘
+    language: ko
+    funnel_stage: consideration
+    density_tier: secondary
+budget:
+  max_models: 1
+  max_samples: 3
+  max_languages: 1
+  weekly_usd_cap: 5
+  monthly_usd_cap: 15
