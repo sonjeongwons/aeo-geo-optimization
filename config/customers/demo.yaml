@@ -1,0 +1,31 @@
+slug: demo
+# Public free-diagnostic SHOWCASE customer (DEMO_CUSTOMER_SLUG="demo"). Rendered on
+# the public /diagnose/[runId] teaser page. Real numbers, no scraping (§0).
+brand:
+  name: EMORA
+  aliases: [emora, EMORA, 에모라]
+competitors:
+  - name: Character.AI
+    aliases: [character ai, c.ai]
+  - name: Replika
+    aliases: [replika]
+  - name: Talkie
+    aliases: [talkie ai]
+languages:
+  - code: en
+    weight: 1
+questions:
+  - text: What are the best AI character chat apps with long-term memory?
+    language: en
+    funnel_stage: consideration
+    density_tier: core
+  - text: Which AI companion app is best for roleplay and image generation?
+    language: en
+    funnel_stage: decision
+    density_tier: core
+budget:
+  max_models: 1
+  max_samples: 2
+  max_languages: 1
+  weekly_usd_cap: 3
+  monthly_usd_cap: 5
