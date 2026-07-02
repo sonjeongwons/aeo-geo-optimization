@@ -1,0 +1,73 @@
+name: Measurement cycle (scheduled)
+
+# Runs a bounded AEO/GEO measurement cycle against the cloud TimescaleDB and
+# writes SMR / earned-source / etc. Requires repo secrets DATABASE_URL (Timescale
+# Cloud) + GEMINI_API_KEY. Until DATABASE_URL is set, scheduled runs are a green
+# no-op (the guard step exits early).
+#
+# Cost control: GEMINI_GROUNDING_SAMPLE_PCT grounds only ~N% of work-units (bounded
+# Search-tool spend); the per-customer weekly_usd_cap bounds token spend.
+on:
+  schedule:
+    - cron: "0 3 * * 1" # 03:00 UTC every Monday (weekly baseline)
+  workflow_dispatch:
+    inputs:
+      customer:
+        description: customer slug
+        default: emora
+      grounding_pct:
+        description: "% of work-units to ground (0-100)"
+        default: "3"
+
+jobs:
+  measure:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    env:
+      DATABASE_URL: ${{ secrets.DATABASE_URL }}
+      GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+      GEMINI_GROUNDING_SAMPLE_PCT: ${{ github.event.inputs.grounding_pct || '3' }}
+      LOG_LEVEL: info
+      CUSTOMER: ${{ github.event.inputs.customer || 'emora' }}
+    steps:
+      - name: Guard — require DATABASE_URL (skip gracefully until armed)
+        id: guard
+        run: |
+          if [ -z "$DATABASE_URL" ]; then
+            echo "DATABASE_URL not set — measurement not armed yet. Skipping (no-op)."
+            echo "armed=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "armed=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - if: steps.guard.outputs.armed == 'true'
+        uses: actions/checkout@v4
+      - if: steps.guard.outputs.armed == 'true'
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - if: steps.guard.outputs.armed == 'true'
+        run: npm ci
+      - name: Apply migrations (idempotent)
+        if: steps.guard.outputs.armed == 'true'
+        run: npm run migrate
+      - name: Run measurement cycle
+        if: steps.guard.outputs.armed == 'true'
+        run: npm run diagnose -- --customer "$CUSTOMER" > report.json 2> diagnose.log || (tail -40 diagnose.log; exit 1)
+      - name: Summarize
+        if: steps.guard.outputs.armed == 'true'
+        run: |
+          node -e '
+            const fs=require("fs");const t=fs.readFileSync("report.json","utf8").split(/\r?\n/);
+            let s=-1;for(let i=t.length-1;i>=0;i--)if(t[i]==="{"){s=i;break;}
+            let e=-1;for(let i=s+1;i<t.length;i++)if(t[i]==="}"){e=i;break;}
+            const r=JSON.parse(t.slice(s,e+1).join("\n"));
+            console.log("runId",r.runId,"| smr",r.smr?.value,"| nTotal",r.smr?.nTotal,"| earnedDomains",(r.earnedSources?.domains||[]).length);
+          '
+      - name: Upload report artifact
+        if: steps.guard.outputs.armed == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: run-report
+          path: report.json
