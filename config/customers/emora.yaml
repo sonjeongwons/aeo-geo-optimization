@@ -186,8 +186,10 @@ questions:
     funnel_stage: decision
     density_tier: secondary
 budget:
+  # Tuned for the weekly monitoring cron: 2 samples/prompt is enough to track SMR
+  # trends; the weekly_usd_cap is the hard cost backstop. Raise for a deep audit.
   max_models: 1
-  max_samples: 5
+  max_samples: 2
   max_languages: 13
   weekly_usd_cap: 10
   monthly_usd_cap: 35
