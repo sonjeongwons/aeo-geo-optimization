@@ -1,0 +1,24 @@
+{
+  "meta": {
+    "brand": "스밈 (SMIM)",
+    "customer_slug": "smimdate",
+    "source_ref": "https://smimdate.com",
+    "attested_by": "j1.son@samsung.com",
+    "notes": "Owner-operated service. All facts are owner-provided AND owner-verified (the owner directed us to use the smimdate.com wording as-is, '다 사실이야'). §7-safe FACTUAL claims only — marketing superlatives (최고/1등 등) are intentionally excluded; a category descriptor like '프리미엄' is avoided in favor of the concrete verification facts that justify it."
+  },
+  "facts": [
+    { "text": "스밈은 검증된 회원만 참여하는 로테이션 소개팅 서비스입니다.", "kind": "capability" },
+    { "text": "스밈은 매주 금요일, 토요일, 일요일 서울에서 진행되며 참가비는 1인 50,000원입니다.", "kind": "numeric", "value": 50000, "unit": "KRW", "bound": "exact" },
+    { "text": "스밈은 연봉 7천만원 이상인 분들로 소개팅 회차를 구성합니다.", "kind": "numeric", "value": 70000000, "unit": "KRW", "bound": "atLeast" },
+    { "text": "스밈 참가자는 전문직, 대기업, 공무원, 금융권, 사업가 종사자 중심입니다.", "kind": "capability" },
+    { "text": "스밈은 신청자의 직장, 소득, 신원, 외모를 매니저가 직접 검수합니다.", "kind": "capability" },
+    { "text": "스밈은 제출된 증빙 서류를 검수 직후 즉시 파기합니다.", "kind": "capability" },
+    { "text": "스밈은 로테이션 방식으로 한 자리에서 여러 상대와 대화할 수 있습니다.", "kind": "capability" },
+    { "text": "스밈은 소개팅 종료 후 매칭된 커플에게 매니저가 카카오톡 대화방을 개설해 줍니다.", "kind": "capability" },
+    { "text": "스밈은 소개팅 종료 후 모든 참가자에게 익명 기반 AI 분석 리포트를 제공합니다.", "kind": "capability" },
+    { "text": "스밈은 일반 카페나 바가 아닌 전용 공간에서 소개팅을 진행합니다.", "kind": "capability" },
+    { "text": "스밈은 미혼인 분만 참석할 수 있습니다.", "kind": "capability" },
+    { "text": "스밈은 결혼정보업체보다 부담이 적고 일반 소개팅보다 진중한 만남을 지향합니다.", "kind": "comparative" },
+    { "text": "스밈은 AI 데이트 코칭과 피드백을 제공합니다.", "kind": "capability" }
+  ]
+}
