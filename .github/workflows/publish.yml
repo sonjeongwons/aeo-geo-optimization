@@ -1,0 +1,82 @@
+name: Auto-publish owned-net (scheduled)
+
+# UNATTENDED weekly AEO/GEO content publish, per customer, to that customer's
+# GitHub Pages hub. This is the "no manual approval" path: the §7 automated gates
+# ARE the review — ONLY gate_status='passed' assets are ever queued/published,
+# the automated sign-off is recorded (§12 audit), and every page is reversible.
+#
+# Requires repo secrets:
+#   DATABASE_URL     Timescale Cloud connection string (already used by measure.yml)
+#   GEMINI_API_KEY   Gemini key (generation only)
+#   HUB_PUSH_TOKEN   GitHub PAT with contents:write on the hub repos
+# Until these are set, scheduled runs are a green no-op (guard exits early).
+on:
+  schedule:
+    - cron: "0 4 * * 2" # 04:00 UTC every Tuesday (offset from the Monday measure cron)
+  workflow_dispatch:
+    inputs:
+      customer:
+        description: "customer slug (smimdate) or 'all'"
+        default: all
+      attempts:
+        description: "generation attempts per customer (accumulate passes)"
+        default: "3"
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    env:
+      DATABASE_URL: ${{ secrets.DATABASE_URL }}
+      GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+      GH_TOKEN: ${{ secrets.HUB_PUSH_TOKEN }}
+      LOG_LEVEL: warn
+      CONTENT_RUN_CEILING_USD: "5"
+      ATTEMPTS: ${{ github.event.inputs.attempts || '3' }}
+      WHICH: ${{ github.event.inputs.customer || 'all' }}
+    steps:
+      - name: Guard — require secrets (skip gracefully until armed)
+        id: guard
+        run: |
+          if [ -z "$DATABASE_URL" ] || [ -z "$GH_TOKEN" ]; then
+            echo "DATABASE_URL / HUB_PUSH_TOKEN not set — auto-publish not armed. Skipping (no-op)."
+            echo "armed=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "armed=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - if: steps.guard.outputs.armed == 'true'
+        uses: actions/checkout@v4
+      - if: steps.guard.outputs.armed == 'true'
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - if: steps.guard.outputs.armed == 'true'
+        run: npm ci
+      - name: Apply migrations (idempotent)
+        if: steps.guard.outputs.armed == 'true'
+        run: npm run migrate
+
+      - name: Auto-publish each armed customer
+        if: steps.guard.outputs.armed == 'true'
+        run: |
+          set -uo pipefail
+          # Per-customer config: slug|customerId|industry|hubRepo|hubBaseUrl|brand
+          # Add emora here once its industry_template is ACTIVE in this DB.
+          CONFIGS=(
+            "smimdate|37a8f2bd-97e9-4428-b98a-d892c079e98a|rotation-dating|sonjeongwons/aeo-smim-hub|https://sonjeongwons.github.io/aeo-smim-hub|smim"
+          )
+          for cfg in "${CONFIGS[@]}"; do
+            IFS='|' read -r slug cid industry repo baseurl brand <<< "$cfg"
+            if [ "$WHICH" != "all" ] && [ "$WHICH" != "$slug" ]; then continue; fi
+            echo "::group::auto-publish $slug"
+            outdir=".hub-$slug"
+            rm -rf "$outdir"
+            git clone --depth 1 "https://x-access-token:${GH_TOKEN}@github.com/${repo}.git" "$outdir" || { echo "clone failed"; echo "::endgroup::"; continue; }
+            CUSTOMER_ID="$cid" INDUSTRY="$industry" HUB_REPO="$repo" \
+              OWNED_NET_HUB_BASE_URL="$baseurl" OWNED_NET_OUT_DIR="./$outdir" HUB_BRAND="$brand" \
+              APPROVER="auto-publish@aeo (owner-authorized)" \
+              bash scripts/auto-publish.sh || echo "auto-publish $slug returned nonzero (continuing)"
+            echo "::endgroup::"
+          done

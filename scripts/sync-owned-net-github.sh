@@ -22,7 +22,14 @@ cd "$DIR"
 git config user.email "doradola38@gmail.com"
 git config user.name  "sonjeongwons"
 git remote remove origin 2>/dev/null || true
-git remote add origin "https://github.com/${REPO}.git"
+# GH_TOKEN (set in CI) embeds a push credential in the remote so unattended runs
+# can push without an interactive credential helper. Locally GH_TOKEN is unset
+# and git uses the ambient credential store (gh/keyring).
+if [ -n "${GH_TOKEN:-}" ]; then
+  git remote add origin "https://x-access-token:${GH_TOKEN}@github.com/${REPO}.git"
+else
+  git remote add origin "https://github.com/${REPO}.git"
+fi
 
 git add -A
 if git diff --cached --quiet; then
