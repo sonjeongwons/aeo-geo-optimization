@@ -198,6 +198,14 @@ export interface ContentMatrixCaps {
    * Defaults to MAX_SUPPORTED_LANGUAGES (18) when absent.
    */
   maxLanguages?: number | null;
+
+  /**
+   * Restrict generation to this subset of channel classes. When absent, cells
+   * are built for ALL_CHANNEL_CLASSES. Useful to generate ONLY publishable
+   * channels (e.g. owned_net — the only 'ready' connector today) so no Gemini
+   * spend is wasted on cells whose connector is still a stub.
+   */
+  channels?: ChannelClass[] | null;
 }
 
 // ---------------------------------------------------------------------------
@@ -405,7 +413,11 @@ export function buildContentMatrix(
     const langCells: ContentCell[] = [];
     const langFormatSet = new Set<ContentFormat>();
 
-    for (const channel of ALL_CHANNEL_CLASSES) {
+    const activeChannels =
+      caps.channels && caps.channels.length > 0
+        ? ALL_CHANNEL_CLASSES.filter((c) => caps.channels!.includes(c))
+        : ALL_CHANNEL_CLASSES;
+    for (const channel of activeChannels) {
       const legalFormats = formatsForTierAndChannel(tier, channel, allowedFormats);
 
       for (const format of legalFormats) {

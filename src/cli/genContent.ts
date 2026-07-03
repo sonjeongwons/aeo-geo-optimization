@@ -61,6 +61,7 @@ interface ParsedArgs {
   formats: number | undefined;
   languages: number | undefined;
   total: number | undefined;
+  channels: string[] | undefined;
 }
 
 function parseArgs(): ParsedArgs {
@@ -71,6 +72,7 @@ function parseArgs(): ParsedArgs {
   let formats: number | undefined;
   let languages: number | undefined;
   let total: number | undefined;
+  let channels: string[] | undefined;
 
   for (let i = 0; i < argv.length; i++) {
     const flag = argv[i];
@@ -94,6 +96,11 @@ function parseArgs(): ParsedArgs {
       const n = parseInt(next, 10);
       if (!isNaN(n) && n > 0) total = n;
       i++;
+    } else if (flag === "--channel" && next && !next.startsWith("-")) {
+      // Comma-separated channel classes to restrict generation to (e.g.
+      // "owned_net"). Only publishable channels avoid wasted Gemini spend.
+      channels = next.split(",").map((s) => s.trim()).filter(Boolean);
+      i++;
     } else if (flag === "--help" || flag === "-h") {
       process.stdout.write(
         "Usage: npm run gen-content -- --customer <uuid> --industry <key>\n" +
@@ -114,7 +121,7 @@ function parseArgs(): ParsedArgs {
     }
   }
 
-  return { customer, industry, formats, languages, total };
+  return { customer, industry, formats, languages, total, channels };
 }
 
 // ---------------------------------------------------------------------------
@@ -240,7 +247,7 @@ function briefFromTemplate(template: {
 // ---------------------------------------------------------------------------
 
 async function main(): Promise<void> {
-  const { customer, industry, formats, languages, total } = parseArgs();
+  const { customer, industry, formats, languages, total, channels } = parseArgs();
 
   if (!customer) {
     process.stderr.write(
@@ -297,6 +304,9 @@ async function main(): Promise<void> {
     max_formats: formats ?? budgetRow?.max_formats ?? null,
     maxLanguages: languages ?? null,
   };
+  if (channels && channels.length > 0) {
+    caps.channels = channels as NonNullable<ContentMatrixCaps["channels"]>;
+  }
 
   process.stderr.write(
     `[gen-content] Content caps: max_assets=${caps.max_content_assets_per_run ?? "default"} ` +

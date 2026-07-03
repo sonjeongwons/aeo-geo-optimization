@@ -402,7 +402,7 @@ function findMatchingSource(
       // (raised from 0.5 to reduce false bindings on lexically similar claims).
       const srcWords = tokenize(srcNorm);
       if (srcWords.length > 0) {
-        const overlap = srcWords.filter((w) => claimWords.includes(w));
+        const overlap = srcWords.filter((w) => wordPresentIn(w, claimWords));
         if (overlap.length / srcWords.length >= 2 / 3) {
           score = 1;
         }
@@ -420,8 +420,7 @@ function findMatchingSource(
         (claim.claim_kind === "capability" || claim.claim_kind === "comparative") &&
         claimWords.length >= 4
       ) {
-        const srcWordSet = new Set(srcWords);
-        const claimInSrc = claimWords.filter((w) => srcWordSet.has(w));
+        const claimInSrc = claimWords.filter((w) => wordPresentIn(w, srcWords));
         if (claimInSrc.length / claimWords.length >= 2 / 3) {
           score = 1;
         }
@@ -481,10 +480,57 @@ function tokenize(text: string): string[] {
     "and", "but", "or", "so", "if", "as", "than", "that", "this",
     "we", "our", "you", "your", "it", "its", "has", "have", "had",
   ]);
+  // Unicode-aware: keep letters (incl. Hangul/Kana/CJK + accented Latin) and
+  // numbers, strip only punctuation/symbols. The prior [^a-z0-9] class deleted
+  // ALL non-ASCII, so CJK claims tokenized to [] and the keyword-overlap tier
+  // (incl. the capability/comparative 2/3 recall path) was dead for ko/ja — a
+  // ko-only customer's capability claims could never bind via overlap. \p{L}
+  // keeps CJK/accented letters; ASCII behavior is unchanged (a-z0-9 ⊂ \p{L}\p{N}).
   return text
-    .replace(/[^a-z0-9\s]/g, " ")
+    .replace(/[^\p{L}\p{N}\s]/gu, " ")
     .split(/\s+/)
     .filter((w) => w.length > 1 && !stopwords.has(w));
+}
+
+// CJK codepoint ranges (Hangul, Kana, CJK ideographs). Used to apply
+// agglutination-aware stem matching ONLY to CJK tokens — Latin tokens keep
+// exact-match semantics so English word-overlap behavior is unchanged.
+const CJK_RE = /[぀-ヿ㐀-䶿一-鿿가-힯]/;
+
+/**
+ * True if two tokens should be treated as the same significant word.
+ *
+ * Exact match always counts. For CJK tokens, ALSO count a stem/inflection match:
+ * Korean is a suffixing/agglutinative language, so a source noun stem ("공간",
+ * "회원", "검수", "서비스") appears in claims as "공간에서", "회원들이", "검수하여",
+ * "서비스입니다". The ASCII tokenizer treated these as different words, so the
+ * 2/3 keyword-overlap tier was unreachable for paraphrased Korean claims (they
+ * fell through to needs_human even when semantically identical to a signed
+ * source). We count a match when the shorter token is a >= 2-char PREFIX of the
+ * longer (stem-at-start — exactly the Korean noun+particle shape). Bounded to
+ * CJK + a 2-char floor so it never spuriously binds unrelated 1-char fragments.
+ */
+function wordMatch(a: string, b: string): boolean {
+  if (a === b) return true;
+  if (CJK_RE.test(a) && CJK_RE.test(b)) {
+    // Shared STEM: Korean inflects nouns by suffixing particles, so paraphrases
+    // differ at the tail on BOTH sides ("외모를"↔"외모에", "매니저가"↔"매니저의").
+    // Neither is a prefix of the other, but they share the meaningful stem. Count
+    // a match when the longest common prefix is >= 2 chars — a 2-char Korean stem
+    // is a real morpheme, while a 1-char overlap ("직장"↔"직업" → "직") is not, so
+    // this stays specific. The 2/3 word-overlap threshold + polarity guard bound
+    // any residual false binding.
+    let i = 0;
+    const max = Math.min(a.length, b.length);
+    while (i < max && a[i] === b[i]) i++;
+    if (i >= 2) return true;
+  }
+  return false;
+}
+
+/** True if `word` matches any token in `list` (exact or CJK-stem, per wordMatch). */
+function wordPresentIn(word: string, list: string[]): boolean {
+  return list.some((w) => wordMatch(word, w));
 }
 
 // ---------------------------------------------------------------------------

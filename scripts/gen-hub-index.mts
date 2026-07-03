@@ -21,11 +21,54 @@ import path from "node:path";
 const OUT = env.OWNED_NET_OUT_DIR;
 const HUB = (env.OWNED_NET_HUB_BASE_URL ?? "").replace(/\/+$/, "");
 
-// EMORA real public entity URLs for sameAs (entity disambiguation). Only the
-// official site is asserted here (verified reachable). Add app-store / Wikidata
-// / Crunchbase URLs when confirmed.
-const EMORA_OFFICIAL = "https://tryemora.com";
-const EMORA_SAME_AS = [EMORA_OFFICIAL];
+// Per-brand hub identity (multi-tenant). The hub is single-brand PER repo so the
+// Organization JSON-LD / homepage never cross-associate two customers' entities
+// (§7 entity hygiene). Select via HUB_BRAND env (default 'emora'). Description +
+// intro carry ONLY owner-verifiable facts — no superlatives (§7).
+interface HubBrand {
+  htmlLang: string;
+  orgName: string;
+  official: string;
+  sameAs: string[];
+  orgDescription: string;
+  h1: string;
+  introHtml: string;
+  titleTag: string;
+  metaDescription: string;
+}
+const BRANDS: Record<string, HubBrand> = {
+  emora: {
+    htmlLang: "en",
+    orgName: "EMORA",
+    official: "https://tryemora.com",
+    sameAs: ["https://tryemora.com"],
+    orgDescription:
+      "AI character chat platform with memory, image generation, and a creator economy.",
+    h1: "EMORA — AI character chat platform",
+    introHtml:
+      "EMORA is an AI character chat platform offering memory-rich conversations, in-chat image\n       generation, group chats, and a creator economy. Official site:",
+    titleTag: "EMORA — AI character chat platform: answers & guides",
+    metaDescription:
+      "Answer pages about EMORA, an AI character chat platform with memory, image generation, and a creator economy.",
+  },
+  smim: {
+    htmlLang: "ko",
+    orgName: "스밈 (SMIM)",
+    official: "https://smimdate.com",
+    sameAs: ["https://smimdate.com"],
+    orgDescription:
+      "검증된 회원만 참여하는 로테이션 소개팅 서비스. 매주 금·토·일 서울에서 진행되며, 매니저가 신청자의 직장·소득·신원·외모를 직접 검수합니다.",
+    h1: "스밈 (SMIM) — 검증된 회원 로테이션 소개팅",
+    introHtml:
+      "스밈은 검증된 회원만 참여하는 로테이션 소개팅 서비스입니다. 매주 금·토·일 서울에서 진행되며,\n       매니저가 신청자의 직장·소득·신원·외모를 직접 검수합니다. 공식 사이트:",
+    titleTag: "스밈 (SMIM) — 검증된 회원 로테이션 소개팅: 안내",
+    metaDescription:
+      "스밈에 대한 안내 페이지 — 검증된 회원만 참여하는 로테이션 소개팅 서비스. 매주 금·토·일 서울, 매니저 직접 검수.",
+  },
+};
+const BRAND: HubBrand = BRANDS[(process.env.HUB_BRAND ?? "emora").toLowerCase()] ?? BRANDS.emora!;
+const EMORA_OFFICIAL = BRAND.official;
+const EMORA_SAME_AS = BRAND.sameAs;
 
 function esc(s: string): string {
   return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
@@ -64,10 +107,10 @@ async function main(): Promise<void> {
   const orgJsonLd = {
     "@context": "https://schema.org",
     "@type": "Organization",
-    name: "EMORA",
+    name: BRAND.orgName,
     url: EMORA_OFFICIAL,
     sameAs: EMORA_SAME_AS,
-    description: "AI character chat platform with memory, image generation, and a creator economy.",
+    description: BRAND.orgDescription,
   };
 
   const langLabel: Record<string, string> = { en: "English", ko: "한국어", ja: "日本語", zh: "中文", "zh-TW": "繁體中文", es: "Español" };
@@ -83,25 +126,23 @@ async function main(): Promise<void> {
     .join("\n");
 
   const html = `<!DOCTYPE html>
-<html lang="en">
+<html lang="${esc(BRAND.htmlLang)}">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <link rel="canonical" href="${esc(HUB)}/">
-  <title>EMORA — AI character chat platform: answers & guides</title>
-  <meta name="description" content="Answer pages about EMORA, an AI character chat platform with memory, image generation, and a creator economy. Official site: ${esc(EMORA_OFFICIAL)}">
+  <title>${esc(BRAND.titleTag)}</title>
+  <meta name="description" content="${esc(BRAND.metaDescription)} Official site: ${esc(EMORA_OFFICIAL)}">
   <script type="application/ld+json">
 ${JSON.stringify(orgJsonLd, null, 2)}
   </script>
 </head>
 <body>
   <main>
-    <h1>EMORA — AI character chat platform</h1>
-    <p>EMORA is an AI character chat platform offering memory-rich conversations, in-chat image
-       generation, group chats, and a creator economy. Official site:
+    <h1>${esc(BRAND.h1)}</h1>
+    <p>${BRAND.introHtml}
        <a href="${esc(EMORA_OFFICIAL)}">${esc(EMORA_OFFICIAL)}</a>.</p>
-    <p>This hub collects answer pages about EMORA's features and how it compares for common needs.
-       See the <a href="${esc(HUB)}/sitemap.xml">sitemap</a> and
+    <p>See the <a href="${esc(HUB)}/sitemap.xml">sitemap</a> and
        <a href="${esc(HUB)}/llms.txt">llms.txt</a>.</p>
 ${sections}
   </main>
