@@ -42,3 +42,4 @@ config/customers/emora-mini.yaml
 .owned-net-out/
 .owned-net/
 .smim-hub/
+.hub-*/

@@ -85,6 +85,37 @@ function bodyTitle(b: any): string {
   }
 }
 
+/**
+ * Scan the hub OUT dir for existing <lang>/<slug>/index.html pages. Used to MERGE
+ * on-disk pages that predate this DB (or whose url_registry row is absent) so a
+ * DB-driven rebuild never DROPS already-published pages from the index. Title is
+ * read from the page's <title> tag; falls back to the slug.
+ */
+async function scanDiskPages(
+  outDir: string,
+  hub: string,
+): Promise<Array<{ url: string; lang: string; title: string }>> {
+  const out: Array<{ url: string; lang: string; title: string }> = [];
+  let entries: string[];
+  try { entries = await fs.readdir(outDir); } catch { return out; }
+  for (const lang of entries) {
+    if (!/^[a-z]{2}(-[A-Za-z]+)?$/.test(lang)) continue; // language dirs only
+    const langPath = path.join(outDir, lang);
+    let slugs: string[];
+    try {
+      if (!(await fs.stat(langPath)).isDirectory()) continue;
+      slugs = await fs.readdir(langPath);
+    } catch { continue; }
+    for (const slug of slugs) {
+      let html: string;
+      try { html = await fs.readFile(path.join(langPath, slug, "index.html"), "utf8"); } catch { continue; }
+      const m = html.match(/<title>([^<]*)<\/title>/i);
+      out.push({ url: `${hub}/${lang}/${slug}/`, lang, title: (m?.[1] ?? slug).trim() });
+    }
+  }
+  return out;
+}
+
 async function main(): Promise<void> {
   const rows = await getDb()
     .selectFrom("url_registry as u")
@@ -95,13 +126,21 @@ async function main(): Promise<void> {
     .where("u.published_url", "like", `${HUB}%`)
     .execute();
 
-  // Group by language
+  // Group by language — DB pages first (richer titles), then MERGE any on-disk
+  // pages not covered by the DB so a rebuild never drops existing pages.
+  const seen = new Set<string>();
   const byLang = new Map<string, Array<{ url: string; title: string }>>();
-  for (const r of rows) {
-    const lang = (r.language as string) || "en";
-    const title = bodyTitle(r.body).slice(0, 110);
+  const add = (lang: string, url: string, title: string): void => {
+    if (seen.has(url)) return;
+    seen.add(url);
     if (!byLang.has(lang)) byLang.set(lang, []);
-    byLang.get(lang)!.push({ url: r.published_url as string, title });
+    byLang.get(lang)!.push({ url, title });
+  };
+  for (const r of rows) {
+    add((r.language as string) || "en", r.published_url as string, bodyTitle(r.body).slice(0, 110));
+  }
+  for (const p of await scanDiskPages(OUT, HUB)) {
+    add(p.lang, p.url, p.title.slice(0, 110));
   }
 
   const orgJsonLd = {
@@ -147,13 +186,13 @@ ${JSON.stringify(orgJsonLd, null, 2)}
 ${sections}
   </main>
   <footer>
-    <p>${rows.length} answer page(s). Auto-generated, §7-gated.</p>
+    <p>${seen.size} answer page(s). Auto-generated, §7-gated.</p>
   </footer>
 </body>
 </html>`;
 
   await fs.writeFile(path.join(OUT, "index.html"), html, "utf8");
-  console.log(`[hub-index] wrote linking index.html: ${rows.length} pages across ${byLang.size} language(s) + Organization JSON-LD`);
+  console.log(`[hub-index] wrote linking index.html: ${seen.size} pages across ${byLang.size} language(s) + Organization JSON-LD`);
 }
 
 main()

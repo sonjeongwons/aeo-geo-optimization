@@ -1,0 +1,18 @@
+{
+  "meta": {
+    "brand": "EMORA",
+    "customer_slug": "emora-mini",
+    "source_ref": "https://tryemora.com",
+    "attested_by": "doradola38@gmail.com",
+    "notes": "Owner-attested EMORA product facts, confirmed 2026-07-03. Extracted from the operator's own live owned-net hub content and confirmed by the owner. §7-safe capability facts only — marketing superlatives (advanced/robust/sophisticated/best) intentionally excluded in favor of the concrete capabilities."
+  },
+  "facts": [
+    { "text": "EMORA is an AI character chat platform for meaningful interactions.", "kind": "capability" },
+    { "text": "EMORA provides infinite memory so AI characters retain conversational context from past interactions.", "kind": "capability" },
+    { "text": "EMORA integrates image generation, letting users create visual content within their chats.", "kind": "capability" },
+    { "text": "EMORA has a character bonding system for deeper, more personalized connections with AI characters.", "kind": "capability" },
+    { "text": "EMORA has a creator economy where users can design, share, and monetize their own AI characters and worlds.", "kind": "capability" },
+    { "text": "EMORA offers a free-to-start model so users can begin without an initial cost.", "kind": "capability" },
+    { "text": "EMORA fosters a creator community where users share, collaborate, and give feedback on character designs.", "kind": "capability" }
+  ]
+}

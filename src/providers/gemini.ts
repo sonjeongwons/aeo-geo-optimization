@@ -145,6 +145,30 @@ function extractUsage(
 // GeminiAdapter
 // ---------------------------------------------------------------------------
 
+// Free-tier / burst rate-limit backoff. The content-generation path has NO
+// retry, so a single 429/RESOURCE_EXHAUSTED fails the unit (validation_failed).
+// On rate-limit errors we wait and retry (the per-minute free-tier quota resets),
+// degrading free-tier keys to SLOWER rather than FAILING. Bounded so a hard
+// daily-quota exhaustion still gives up instead of hanging forever.
+const _RL_RE = /\brate[\s_-]?limit|\b429\b|\bquota\b|resource[\s_-]?exhausted|too many requests/i;
+const RL_MAX_RETRIES = Number(process.env["GEMINI_RATE_LIMIT_RETRIES"] ?? "3");
+const RL_BASE_MS = Number(process.env["GEMINI_RATE_LIMIT_BASE_MS"] ?? "20000");
+async function retryOnRateLimit<T>(fn: () => Promise<T>): Promise<T> {
+  let lastErr: unknown;
+  for (let attempt = 0; attempt <= RL_MAX_RETRIES; attempt++) {
+    try {
+      return await fn();
+    } catch (err) {
+      lastErr = err;
+      const msg = err instanceof Error ? err.message : String(err);
+      if (attempt >= RL_MAX_RETRIES || !_RL_RE.test(msg)) throw err;
+      const waitMs = Math.min(60_000, RL_BASE_MS * 2 ** attempt);
+      await new Promise((r) => setTimeout(r, waitMs));
+    }
+  }
+  throw lastErr;
+}
+
 export class GeminiAdapter implements ProviderAdapter {
   readonly provider = "gemini";
   readonly modality: Modality = "chat";
@@ -185,14 +209,14 @@ export class GeminiAdapter implements ProviderAdapter {
     const grounded = req.grounded === true || process.env["GEMINI_GROUNDING"] === "on";
 
     try {
-      const response = await client.models.generateContent({
+      const response = await retryOnRateLimit(() => client.models.generateContent({
         model: req.modelId,
         contents: req.prompt,
         config: {
           temperature: req.temperature,
           ...(grounded ? { tools: [{ googleSearch: {} }] } : {}),
         },
-      });
+      }));
 
       const answerText = extractText(response);
       if (answerText === null) {
@@ -298,7 +322,7 @@ export class GeminiAdapter implements ProviderAdapter {
     const geminiSchema = zodToGeminiSchema(req.schema);
 
     try {
-      const response = await client.models.generateContent({
+      const response = await retryOnRateLimit(() => client.models.generateContent({
         model: req.modelId,
         contents: req.prompt,
         config: {
@@ -310,7 +334,7 @@ export class GeminiAdapter implements ProviderAdapter {
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
           responseSchema: geminiSchema as any,
         },
-      });
+      }));
 
       const usage = extractUsage(response, req.modelId, false);
       const rawText = extractText(response);
@@ -373,7 +397,7 @@ async function _callJudge(
   geminiSchema: Record<string, unknown>
 ): Promise<JudgeResult> {
   try {
-    const response = await client.models.generateContent({
+    const response = await retryOnRateLimit(() => client.models.generateContent({
       model: modelId,
       contents: userPrompt,
       config: {
@@ -383,7 +407,7 @@ async function _callJudge(
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         responseSchema: geminiSchema as any,
       },
-    });
+    }));
 
     const rawText = extractText(response);
     const usage = extractUsage(response, modelId, false);

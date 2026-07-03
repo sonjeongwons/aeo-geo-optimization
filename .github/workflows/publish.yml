@@ -66,6 +66,7 @@ jobs:
           # Add emora here once its industry_template is ACTIVE in this DB.
           CONFIGS=(
             "smimdate|37a8f2bd-97e9-4428-b98a-d892c079e98a|rotation-dating|sonjeongwons/aeo-smim-hub|https://sonjeongwons.github.io/aeo-smim-hub|smim"
+            "emora|5eb8d7ef-41c4-499c-a651-3f96eb75997c|ai-character-chat|sonjeongwons/aeo-owned-net-hub|https://sonjeongwons.github.io/aeo-owned-net-hub|emora"
           )
           for cfg in "${CONFIGS[@]}"; do
             IFS='|' read -r slug cid industry repo baseurl brand <<< "$cfg"

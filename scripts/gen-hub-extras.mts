@@ -105,9 +105,38 @@ async function main(): Promise<void> {
     fullParts.push(`\n## ${title} (${r.language})\n${r.published_url}\n\n${md}\n`);
   }
 
+  // MERGE on-disk pages not covered by the DB (legacy pages / absent url_registry
+  // rows) so the DB-driven llms.txt never DROPS an already-published page. Their
+  // index.md twin already exists on disk; we only add the manifest/full entries.
+  const dbUrls = new Set(rows.map((r) => r.published_url));
+  let merged = 0;
+  let langEntries: string[] = [];
+  try { langEntries = await fs.readdir(OUT); } catch { /* no dir */ }
+  for (const lang of langEntries) {
+    if (!/^[a-z]{2}(-[A-Za-z]+)?$/.test(lang)) continue;
+    const langPath = path.join(OUT, lang);
+    let slugs: string[];
+    try {
+      if (!(await fs.stat(langPath)).isDirectory()) continue;
+      slugs = await fs.readdir(langPath);
+    } catch { continue; }
+    for (const slug of slugs) {
+      const url = `${HUB}/${lang}/${slug}/`;
+      if (dbUrls.has(url)) continue;
+      let html: string;
+      try { html = await fs.readFile(path.join(langPath, slug, "index.html"), "utf8"); } catch { continue; }
+      const title = (html.match(/<title>([^<]*)<\/title>/i)?.[1] ?? slug).trim();
+      let mdBody = "";
+      try { mdBody = await fs.readFile(path.join(langPath, slug, "index.md"), "utf8"); } catch { /* no twin */ }
+      manifest.push(`- [${title}](${url}) (${lang}) — [markdown](${url}index.md)`);
+      if (mdBody) fullParts.push(`\n## ${title} (${lang})\n${url}\n\n${mdBody}\n`);
+      merged++;
+    }
+  }
+
   await fs.writeFile(path.join(OUT, "llms.txt"), manifest.join("\n") + "\n", "utf8");
   await fs.writeFile(path.join(OUT, "llms-full.txt"), fullParts.join("\n") + "\n", "utf8");
-  console.log(`[hub-extras] wrote ${rows.length} index.md + llms.txt + llms-full.txt into ${OUT}`);
+  console.log(`[hub-extras] wrote ${rows.length} index.md + llms.txt + llms-full.txt (+${merged} on-disk merged) into ${OUT}`);
   console.log(`[hub-extras] llms.txt: ${HUB}/llms.txt`);
 }
 
