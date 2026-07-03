@@ -29,7 +29,12 @@ jobs:
       GEMINI_GROUNDING_SAMPLE_PCT: ${{ github.event.inputs.grounding_pct || '3' }}
       LOG_LEVEL: info
       # Space-separated list of customer slugs; dispatch input overrides.
-      CUSTOMERS: ${{ github.event.inputs.customer || 'emora smimdate' }}
+      CUSTOMERS: ${{ github.event.inputs.customer || 'emora-mini smimdate' }}
+      # Email report delivery (Gmail SMTP). Set MAIL_USERNAME + MAIL_PASSWORD
+      # (a Gmail App Password) secrets to arm; unset → report built but not sent.
+      MAIL_USERNAME: ${{ secrets.MAIL_USERNAME }}
+      MAIL_PASSWORD: ${{ secrets.MAIL_PASSWORD }}
+      REPORT_TO: doradola38@gmail.com
     steps:
       - name: Guard — require DATABASE_URL (skip gracefully until armed)
         id: guard
@@ -39,6 +44,11 @@ jobs:
             echo "armed=false" >> "$GITHUB_OUTPUT"
           else
             echo "armed=true" >> "$GITHUB_OUTPUT"
+          fi
+          if [ -n "$MAIL_USERNAME" ] && [ -n "$MAIL_PASSWORD" ]; then
+            echo "mail=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "mail=false" >> "$GITHUB_OUTPUT"
           fi
 
       - if: steps.guard.outputs.armed == 'true'
@@ -77,3 +87,30 @@ jobs:
           name: run-reports
           path: report-*.json
           if-no-files-found: ignore
+
+      # ---- AEO/GEO progress email (cumulative history + WoW improvement) ----
+      - name: Build AEO/GEO email report
+        if: steps.guard.outputs.armed == 'true'
+        run: |
+          export REPORT_STAMP="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+          npx tsx scripts/email-report.mts
+          {
+            echo "MAIL_SUBJECT<<__EOF__"
+            cat report-subject.txt
+            echo "__EOF__"
+          } >> "$GITHUB_ENV"
+
+      - name: Send report email (Gmail SMTP)
+        if: steps.guard.outputs.armed == 'true' && steps.guard.outputs.mail == 'true'
+        uses: dawidd6/action-send-mail@v3
+        with:
+          server_address: smtp.gmail.com
+          server_port: 465
+          secure: true
+          username: ${{ secrets.MAIL_USERNAME }}
+          password: ${{ secrets.MAIL_PASSWORD }}
+          subject: ${{ env.MAIL_SUBJECT }}
+          to: doradola38@gmail.com
+          from: AEO/GEO Bot <${{ secrets.MAIL_USERNAME }}>
+          html_body: file://report-email.html
+          convert_markdown: false
