@@ -55,6 +55,31 @@ import type { DeferredUrl, JsonLd } from "../../content/types.js";
 import { renderPage, renderSitemap } from "./render.js";
 import type { SitemapEntry } from "./render.js";
 
+// Per-brand entity identity for page JSON-LD (Organization publisher + sameAs)
+// and the visible "About <brand>" blurb. Selected by the HUB_BRAND env at
+// publish time — mirrors the BRANDS map in scripts/gen-hub-index.mts. sameAs
+// links the official site for entity disambiguation (NOT a §0 violation — we
+// LINK to the site, never scrape/represent it). Facts here are owner-attested.
+const HUB_BRANDS: Record<
+  string,
+  { name: string; url: string; sameAs: string[]; description: string }
+> = {
+  emora: {
+    name: "EMORA",
+    url: "https://tryemora.com",
+    sameAs: ["https://tryemora.com"],
+    description:
+      "AI character chat platform for meaningful interactions — infinite memory, image generation, and a creator economy.",
+  },
+  smim: {
+    name: "스밈 (SMIM)",
+    url: "https://smimdate.com",
+    sameAs: ["https://smimdate.com"],
+    description:
+      "검증된 회원만 참여하는 로테이션 소개팅 서비스. 매주 금·토·일 서울에서 진행되며, 매니저가 직장·소득·신원·외모를 직접 검수합니다.",
+  },
+};
+
 // ---------------------------------------------------------------------------
 // OwnedNetTarget — the swap seam (FsTarget today; S3/CDN later)
 // ---------------------------------------------------------------------------
@@ -524,7 +549,10 @@ export class OwnedNetConnector implements ChannelConnector {
         ? stampDatePublished(req.jsonLd, datePublished)
         : undefined;
 
-    // Render deterministic HTML.
+    // Render deterministic HTML. Brand identity (for JSON-LD Organization +
+    // entity blurb — the AEO/GEO entity-disambiguation lever) is selected by the
+    // HUB_BRAND env, mirroring the hub index generator; omitted when unset.
+    const brand = HUB_BRANDS[(process.env["HUB_BRAND"] ?? "").toLowerCase()];
     const renderInput = {
       body: req.body,
       disclosureTag: req.disclosureTag,
@@ -532,6 +560,7 @@ export class OwnedNetConnector implements ChannelConnector {
       language: lang,
       datePublished,
       ...(jsonLd !== undefined ? { jsonLd } : {}),
+      ...(brand ? { brand } : {}),
     };
     const html = renderPage(renderInput);
 

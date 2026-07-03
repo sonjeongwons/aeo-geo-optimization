@@ -230,16 +230,51 @@ describe("renderPage — JSON-LD embedded as <script type=application/ld+json>",
     expect(html).toContain('"EMORA"');
   });
 
-  it("does NOT include JSON-LD script block when jsonLd is absent", () => {
+  it("auto-derives an Article JSON-LD block when jsonLd is absent (AEO structured data)", () => {
     const body: ContentBody = {
       content_type: "definition",
       text: "EMORA is an AI platform.",
       meaning_key: "emora-def",
     };
     const input = makeInput(body);
-    // No jsonLd in input
+    // No explicit jsonLd → renderer derives schema.org Article from the body so
+    // every page carries structured data (the #1 AEO/GEO citation lever).
     const html = renderPage(input);
-    expect(html).not.toContain('"application/ld+json"');
+    expect(html).toContain('"application/ld+json"');
+    expect(html).toContain('"Article"');
+    expect(html).toContain('"articleBody"');
+    expect(html).toContain('"inLanguage"');
+  });
+
+  it("auto-derives a FAQPage JSON-LD block for faq content_type", () => {
+    const body: ContentBody = {
+      content_type: "faq",
+      rows: [
+        { q: "What is EMORA?", a: "An AI character chat platform.", answer_claim_ids: [] },
+      ],
+    };
+    const html = renderPage(makeInput(body));
+    expect(html).toContain('"FAQPage"');
+    expect(html).toContain('"acceptedAnswer"');
+  });
+
+  it("embeds brand Organization + About blurb when brand is supplied", () => {
+    const body: ContentBody = {
+      content_type: "definition",
+      text: "스밈은 검증된 회원 로테이션 소개팅 서비스입니다.",
+      meaning_key: "smim-def",
+    };
+    const html = renderPage(
+      makeInput(body, {
+        language: "ko",
+        brand: { name: "스밈 (SMIM)", url: "https://smimdate.com", sameAs: ["https://smimdate.com"], description: "로테이션 소개팅" },
+      }),
+    );
+    expect(html).toContain('"Organization"');
+    expect(html).toContain("smimdate.com");
+    expect(html).toContain('class="about"');
+    expect(html).toContain("<h1>");
+    expect(html).toContain('name="description"');
   });
 
   it("datePublished is embedded in the page meta tag", () => {

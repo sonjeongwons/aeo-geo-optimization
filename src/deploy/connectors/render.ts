@@ -48,6 +48,23 @@ export interface RenderInput {
   language: string;
   /** ISO-8601 datePublished string (stamped at publish time). */
   datePublished: string;
+  /**
+   * Optional brand identity for entity-disambiguation markup (AEO/GEO): drives
+   * the Organization publisher/about in the auto-derived JSON-LD and a visible
+   * "About <brand>" blurb linking the official site (sameAs). Omit for a
+   * brand-agnostic page.
+   */
+  brand?: {
+    name: string;
+    url?: string;
+    sameAs?: string[];
+    description?: string;
+  };
+  /**
+   * Optional related-page links (hub-graph internal linking — a first-class
+   * discovery lever). Rendered as a <nav class="related"> list.
+   */
+  relatedLinks?: Array<{ url: string; title: string }>;
 }
 
 // ---------------------------------------------------------------------------
@@ -102,6 +119,7 @@ function htmlPage(opts: {
   main: string;
   jsonLd?: JsonLd;
   disclosureTag: string | null;
+  description?: string;
 }): string {
   const jsonLdBlock = opts.jsonLd
     ? `\n  <script type="application/ld+json">\n${serializeJsonLd(opts.jsonLd)}\n  </script>`
@@ -125,7 +143,7 @@ function htmlPage(opts: {
   <link rel="canonical" href="${esc(opts.canonical)}">
   <link rel="alternate" type="text/markdown" href="${esc(opts.canonical.endsWith("/") ? opts.canonical + "index.md" : opts.canonical + ".md")}">
   <meta name="date" content="${esc(iso)}">
-  <meta name="last-modified" content="${esc(iso)}">${jsonLdBlock}
+  <meta name="last-modified" content="${esc(iso)}">${opts.description ? `\n  <meta name="description" content="${esc(opts.description)}">` : ""}${jsonLdBlock}
   <title>${esc(opts.title)}</title>
 </head>
 <body>
@@ -155,6 +173,7 @@ function buildPageOpts(opts: {
   main: string;
   jsonLd: JsonLd | undefined;
   disclosureTag: string | null;
+  description?: string;
 }): Parameters<typeof htmlPage>[0] {
   const { jsonLd, ...rest } = opts;
   if (jsonLd !== undefined) {
@@ -163,33 +182,160 @@ function buildPageOpts(opts: {
   return rest;
 }
 
-function renderDefinition(body: DefinitionSentenceBody, input: RenderInput): string {
-  const main = `    <article class="definition">
-      <p>${esc(body.text)}</p>
+// ---------------------------------------------------------------------------
+// AEO/GEO enrichment helpers — inline JSON-LD, entity blurb, hub-graph links
+// ---------------------------------------------------------------------------
+
+/** WebSite base (origin + first path segment = the hub root) from a canonical URL. */
+function websiteBase(canonical: string): string {
+  try {
+    const u = new URL(canonical);
+    const seg = u.pathname.split("/").filter(Boolean);
+    return seg.length > 0 ? `${u.origin}/${seg[0]}/` : `${u.origin}/`;
+  } catch {
+    return canonical;
+  }
+}
+
+/** Organization node from brand identity (name + optional url/sameAs/description). */
+function brandOrg(brand: NonNullable<RenderInput["brand"]>): Record<string, unknown> {
+  return {
+    "@type": "Organization",
+    name: brand.name,
+    ...(brand.url ? { url: brand.url } : {}),
+    ...(brand.sameAs && brand.sameAs.length > 0 ? { sameAs: brand.sameAs } : {}),
+    ...(brand.description ? { description: brand.description } : {}),
+  };
+}
+
+/**
+ * Auto-derive schema.org JSON-LD from the body so EVERY page carries structured
+ * data (the #1 AEO/GEO citation lever). faq → FAQPage; everything else → Article.
+ * inLanguage + datePublished/dateModified + url + isPartOf WebSite are always set;
+ * publisher/about Organization when a brand is supplied. jsonld pages already
+ * carry their own JSON-LD, so they are skipped. Deterministic (no clock/random;
+ * htmlPage serializes with sorted keys).
+ */
+function deriveJsonLd(body: ContentBody, input: RenderInput): JsonLd | undefined {
+  if (body.content_type === "jsonld") return undefined;
+  const hub = websiteBase(input.canonicalUrl);
+  const brand = input.brand;
+  const org = brand ? brandOrg(brand) : undefined;
+  const isPartOf = { "@type": "WebSite", url: hub, ...(brand ? { name: brand.name } : {}) };
+
+  if (body.content_type === "faq") {
+    return {
+      "@context": "https://schema.org",
+      "@type": "FAQPage",
+      inLanguage: input.language,
+      url: input.canonicalUrl,
+      datePublished: input.datePublished,
+      dateModified: input.datePublished,
+      isPartOf,
+      ...(org ? { publisher: org } : {}),
+      mainEntity: body.rows.map((r) => ({
+        "@type": "Question",
+        name: r.q,
+        acceptedAnswer: { "@type": "Answer", text: r.a },
+      })),
+    } as unknown as JsonLd;
+  }
+
+  let headline = "";
+  let articleBody = "";
+  switch (body.content_type) {
+    case "definition":
+    case "answer_block":
+      headline = body.text;
+      articleBody = body.text;
+      break;
+    case "comparison":
+      headline = body.columns[0] ?? "Comparison";
+      articleBody = body.rows
+        .map((r) => `${r.entity}: ${r.cells.map((c) => c.value).join(", ")}`)
+        .join(". ");
+      break;
+    case "case_study":
+      headline = body.situation;
+      articleBody = [body.situation, body.action, body.result].join(" ");
+      break;
+  }
+  return {
+    "@context": "https://schema.org",
+    "@type": "Article",
+    headline: headline.slice(0, 110),
+    articleBody,
+    inLanguage: input.language,
+    url: input.canonicalUrl,
+    datePublished: input.datePublished,
+    dateModified: input.datePublished,
+    isPartOf,
+    ...(org ? { publisher: org, about: { "@type": "Organization", name: brand!.name } } : {}),
+  } as unknown as JsonLd;
+}
+
+/** Visible "About <brand>" entity blurb linking the official site (sameAs echo). */
+function aboutBrandHtml(brand: RenderInput["brand"]): string {
+  if (!brand) return "";
+  const desc = brand.description ? ` — ${esc(brand.description)}` : "";
+  const link = brand.url
+    ? ` Official site: <a href="${esc(brand.url)}">${esc(brand.url)}</a>.`
+    : "";
+  return `\n      <aside class="about"><p><strong>${esc(brand.name)}</strong>${desc}${link}</p></aside>`;
+}
+
+/** Hub-graph internal links (discovery lever) as a <nav class="related"> list. */
+function relatedLinksHtml(links: RenderInput["relatedLinks"]): string {
+  if (!links || links.length === 0) return "";
+  const items = links
+    .map((l) => `        <li><a href="${esc(l.url)}">${esc(l.title)}</a></li>`)
+    .join("\n");
+  return `\n      <nav class="related" aria-label="Related pages">\n        <h2>Related</h2>\n        <ul>\n${items}\n        </ul>\n      </nav>`;
+}
+
+/**
+ * Compose the <article> body: a semantic H1 + the type-specific inner HTML +
+ * the entity blurb + related links. Shared by every content renderer so all
+ * pages get the same AEO structure.
+ */
+function composeArticle(cls: string, h1: string, innerHtml: string, input: RenderInput): string {
+  return `    <article class="${cls}">
+      <h1>${esc(h1)}</h1>
+${innerHtml}${aboutBrandHtml(input.brand)}${relatedLinksHtml(input.relatedLinks)}
     </article>`;
+}
+
+/** First-sentence-ish meta description, bounded to ~160 chars for SERP/AEO. */
+function metaDescription(text: string): string {
+  const t = text.trim().replace(/\s+/g, " ");
+  return t.length <= 160 ? t : t.slice(0, 157).trimEnd() + "…";
+}
+
+function renderDefinition(body: DefinitionSentenceBody, input: RenderInput): string {
+  const main = composeArticle("definition", body.text, `      <p>${esc(body.text)}</p>`, input);
   return htmlPage(buildPageOpts({
     lang: input.language,
     canonical: input.canonicalUrl,
     datePublished: input.datePublished,
     title: esc(body.text).slice(0, 60),
     main,
-    jsonLd: input.jsonLd,
+    jsonLd: input.jsonLd ?? deriveJsonLd(body, input),
     disclosureTag: input.disclosureTag,
+    description: metaDescription(body.text),
   }));
 }
 
 function renderAnswerBlock(body: AnswerBlockBody, input: RenderInput): string {
-  const main = `    <article class="answer-block">
-      <p>${esc(body.text)}</p>
-    </article>`;
+  const main = composeArticle("answer-block", body.text, `      <p>${esc(body.text)}</p>`, input);
   return htmlPage(buildPageOpts({
     lang: input.language,
     canonical: input.canonicalUrl,
     datePublished: input.datePublished,
     title: esc(body.text).slice(0, 60),
     main,
-    jsonLd: input.jsonLd,
+    jsonLd: input.jsonLd ?? deriveJsonLd(body, input),
     disclosureTag: input.disclosureTag,
+    description: metaDescription(body.text),
   }));
 }
 
@@ -201,13 +347,11 @@ function renderFaq(body: FaqBody, input: RenderInput): string {
     )
     .join("\n");
 
-  const main = `    <article class="faq">
-      <dl>
-${rows}
-      </dl>
-    </article>`;
+  const h1 = body.rows[0] != null ? body.rows[0].q : "FAQ";
+  const main = composeArticle("faq", h1, `      <dl>\n${rows}\n      </dl>`, input);
 
   const title = body.rows[0] != null ? esc(body.rows[0].q).slice(0, 60) : "FAQ";
+  const desc = body.rows[0] != null ? metaDescription(`${body.rows[0].q} ${body.rows[0].a}`) : "FAQ";
 
   return htmlPage(buildPageOpts({
     lang: input.language,
@@ -215,8 +359,9 @@ ${rows}
     datePublished: input.datePublished,
     title,
     main,
-    jsonLd: input.jsonLd,
+    jsonLd: input.jsonLd ?? deriveJsonLd(body, input),
     disclosureTag: input.disclosureTag,
+    description: desc,
   }));
 }
 
@@ -234,8 +379,7 @@ function renderComparison(body: ComparisonBody, input: RenderInput): string {
     })
     .join("\n");
 
-  const main = `    <article class="comparison">
-      <table>
+  const tableHtml = `      <table>
         <thead>
           <tr>
 ${headerCells}
@@ -244,8 +388,9 @@ ${headerCells}
         <tbody>
 ${dataRows}
         </tbody>
-      </table>
-    </article>`;
+      </table>`;
+  const h1 = body.columns.length > 0 ? body.columns.join(" vs ") : "Comparison";
+  const main = composeArticle("comparison", h1, tableHtml, input);
 
   const title =
     body.columns.length > 0
@@ -258,8 +403,9 @@ ${dataRows}
     datePublished: input.datePublished,
     title,
     main,
-    jsonLd: input.jsonLd,
+    jsonLd: input.jsonLd ?? deriveJsonLd(body, input),
     disclosureTag: input.disclosureTag,
+    description: metaDescription(h1),
   }));
 }
 
@@ -281,11 +427,10 @@ ${metrics}
       </table>`
       : "";
 
-  const main = `    <article class="case-study">
-      <section class="situation"><h2>Situation</h2><p>${esc(body.situation)}</p></section>
+  const inner = `      <section class="situation"><h2>Situation</h2><p>${esc(body.situation)}</p></section>
       <section class="action"><h2>Action</h2><p>${esc(body.action)}</p></section>
-      <section class="result"><h2>Result</h2><p>${esc(body.result)}</p></section>${metricsTable}
-    </article>`;
+      <section class="result"><h2>Result</h2><p>${esc(body.result)}</p></section>${metricsTable}`;
+  const main = composeArticle("case-study", body.situation, inner, input);
 
   const title = esc(body.situation).slice(0, 60);
 
@@ -295,8 +440,9 @@ ${metrics}
     datePublished: input.datePublished,
     title,
     main,
-    jsonLd: input.jsonLd,
+    jsonLd: input.jsonLd ?? deriveJsonLd(body, input),
     disclosureTag: input.disclosureTag,
+    description: metaDescription([body.situation, body.action, body.result].join(" ")),
   }));
 }
 
