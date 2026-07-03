@@ -25,14 +25,18 @@ on:
 jobs:
   publish:
     runs-on: ubuntu-latest
-    timeout-minutes: 90
+    # Free-tier Gemini keys hit 429s that the adapter absorbs via backoff waits,
+    # which lengthens runs — give ample headroom so publish/push still happens.
+    timeout-minutes: 180
     env:
       DATABASE_URL: ${{ secrets.DATABASE_URL }}
       GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
       GH_TOKEN: ${{ secrets.HUB_PUSH_TOKEN }}
       LOG_LEVEL: warn
       CONTENT_RUN_CEILING_USD: "5"
-      ATTEMPTS: ${{ github.event.inputs.attempts || '3' }}
+      # Modest per-run generation load so free-tier rate limits stay manageable.
+      ATTEMPTS: ${{ github.event.inputs.attempts || '2' }}
+      TOTAL: "10"
       WHICH: ${{ github.event.inputs.customer || 'all' }}
     steps:
       - name: Guard — require secrets (skip gracefully until armed)
