@@ -77,6 +77,44 @@ describe("claimVerify Korean agglutination (CJK stem match)", () => {
     expect(result.claims[0]?.resolved_source_id).toBe(src.id);
   });
 
+  it("a Korean 원-denominated numeric claim binds to a KRW source (currency alias)", () => {
+    // Source stored in ASCII "KRW"; claim written in Korean "원". Before the
+    // currency-alias fix these were INCOMPATIBLE units → never bound → the
+    // verifiableNumbers gate blocked the fee/salary page.
+    const src: ClaimSourceRow = {
+      id: "44444444-4444-4444-4444-444444444444",
+      customer_id: "22222222-2222-2222-2222-222222222222",
+      claim_text: "스밈 참가비는 1인 50,000원입니다",
+      claim_kind: "numeric",
+      numeric_value: "50000",
+      numeric_unit: "KRW",
+      numeric_bound: "exact",
+      source_kind: "customer_attested",
+      source_ref: "https://smimdate.com",
+      verified_by: "j1.son@samsung.com",
+      verified_at: new Date("2026-06-26T00:00:00Z"),
+      created_at: new Date("2026-06-26T00:00:00Z"),
+    };
+    const text = "스밈 참가비는 1인 50,000원입니다";
+    const claim: ClaimRecord = {
+      claim_id: "55555555-5555-5555-5555-555555555555",
+      claim_text: text,
+      claim_kind: "numeric",
+      numeric: { value: 50000, unit: "원" },
+      span: { start: 0, end: text.length },
+      resolved_source_id: null,
+      verification: "unverified",
+    };
+    const result = verifyAndDecide({
+      body: body(text),
+      language: "ko",
+      claims: [claim],
+      sources: [src],
+    });
+    expect(result.decision).toBe("pass");
+    expect(result.claims[0]?.resolved_source_id).toBe(src.id);
+  });
+
   it("a FABRICATED Korean capability with no stem overlap binds to NOTHING (needs_human)", () => {
     const src = source("스밈은 일반 카페나 바가 아닌 전용 공간에서 소개팅을 진행합니다");
     // Unrelated fabricated claim — must NOT over-match via loose CJK prefixing.

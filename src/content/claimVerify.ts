@@ -246,6 +246,23 @@ function normalizeNumeric(
     return null; // ambiguous magnitude-vs-unit — fail closed
   }
 
+  // Currency — canonicalize KRW aliases so a claim written in Korean "원" binds
+  // to a source stored as "KRW" (the ASCII unit). Korean fee/salary facts
+  // (참가비 50,000원, 연봉 7천만원) are numeric §7 claims; without this the claim
+  // unit "원" ≠ source "krw" made them INCOMPATIBLE → never bound → the
+  // verifiableNumbers gate blocked the page. Korean myriad currency units are
+  // scaled (만원 = 10^4 KRW, 억원 = 10^8 KRW) so either value form matches.
+  if (u === "원" || u === "krw" || u === "won" || u === "₩") {
+    return { value, canonicalUnit: "krw" };
+  }
+  if (u === "천원") return { value: value * 1_000, canonicalUnit: "krw" };
+  if (u === "만원") return { value: value * 10_000, canonicalUnit: "krw" };
+  if (u === "억원") return { value: value * 100_000_000, canonicalUnit: "krw" };
+  // USD aliases (parallel hygiene for $-denominated sources).
+  if (u === "$" || u === "usd" || u === "dollar" || u === "dollars") {
+    return { value, canonicalUnit: "usd" };
+  }
+
   // Generic count / bare number (ms, s, users, stars, etc.)
   return { value, canonicalUnit: u };
 }

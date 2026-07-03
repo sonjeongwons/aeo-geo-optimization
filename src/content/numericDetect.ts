@@ -72,18 +72,28 @@ const NUMBER_WORDS: Record<string, readonly string[]> = {
     "percent", "percentage",
   ],
   ja: [
-    // Arabic-script number words used in Japanese copy
-    "パーセント", "倍", "割",
+    // Arabic-script number words used in Japanese copy.
+    // NOTE: single-char ratio units 倍/割 are DELIBERATELY excluded here — they
+    // collide with common words and the digit+unit forms ("2倍", "3割") are
+    // already caught by DIGIT_REGEX (倍/割 are in its unit list). Listing them as
+    // standalone number-words caused false-positive numeric blocks on ordinary
+    // prose. Multi-char units like パーセント stay (low collision).
+    "パーセント",
     // Note: CJK ideographic numerals (一二三...) are caught by CJK_NUMERAL_REGEX
     // Number-like phrases
     "数百", "数千", "数万", "数億",
   ],
   ko: [
-    "퍼센트", "배", "할",
+    // "배"(ship/pear/stomach) and "할"(verb ending 확인할/구성할) collide with
+    // very common Korean words → excluded as standalone. Digit forms "2배"/"3할"
+    // are still caught by DIGIT_REGEX. This fixed false-positive numeric blocks
+    // on clean capability prose (e.g. "…확인할 수 있습니다").
+    "퍼센트",
     "수백", "수천", "수만", "수억",
   ],
   zh: [
-    "百分之", "倍", "成",
+    // 倍/成 excluded (collide with 成=become etc.); digit forms caught by DIGIT_REGEX.
+    "百分之",
     "数百", "数千", "数万", "数亿",
   ],
 };
