@@ -70,7 +70,9 @@ if [ -z "${IDS// /}" ]; then echo "[auto-publish] nothing leased (throttle or 0 
 echo "[auto-publish] publishing leased rows: $IDS"
 npx tsx scripts/publish-owned-net.mts $IDS 2>&1 | grep -aoE "published url=[^ ]+" || true
 
-# 6) Rebuild the hub index + llms.txt (brand-scoped) and push to GitHub Pages.
+# 6) Refresh the hub-graph internal links across ALL pages (new + existing), then
+#    rebuild the index + llms.txt (brand-scoped) and push to GitHub Pages.
+npx tsx scripts/rerender-hub.mts 2>&1 | grep -aoE "re-rendered.*" || true
 npx tsx scripts/gen-hub-index.mts 2>&1 | grep -aoE "wrote linking.*" || true
 npx tsx scripts/gen-hub-extras.mts 2>&1 | grep -aoE "wrote [0-9]+ index.*" || true
 bash scripts/sync-owned-net-github.sh 2>&1 | tail -2

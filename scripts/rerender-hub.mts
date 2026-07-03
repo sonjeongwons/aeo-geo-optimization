@@ -49,24 +49,51 @@ async function main(): Promise<void> {
     .where("u.published_url", "like", `${HUB}%`)
     .execute();
 
+  // Title for hub-graph link labels (mirrors gen-hub-index bodyTitle).
+  const titleOf = (b: any): string => {
+    switch (b?.content_type) {
+      case "definition": return String(b.text ?? "").slice(0, 80);
+      case "answer_block": return String(b.text ?? "").split(/[.。!?]/)[0]!.slice(0, 80);
+      case "faq": return String(b.rows?.[0]?.q ?? "FAQ").slice(0, 80);
+      case "comparison": return (Array.isArray(b.columns) ? b.columns.join(" vs ") : "Comparison").slice(0, 80);
+      case "case_study": return String(b.situation ?? "Case study").slice(0, 80);
+      default: return "Answer";
+    }
+  };
+  const pages = rows
+    .map((r) => ({ url: r.published_url as string, lang: r.language as string, title: titleOf(r.body) }))
+    .filter((p) => Boolean(localDirOf(p.url)));
+
+  const MAX_RELATED = 6;
   let n = 0;
   for (const r of rows) {
-    const dir = localDirOf(r.published_url as string);
+    const url = r.published_url as string;
+    const dir = localDirOf(url);
     if (!dir) continue;
+    const lang = r.language as string;
+    // Hub-graph internal links: sibling pages in the SAME language (discovery
+    // lever — orphan pages get crawled/cited far less). Deterministic: sort by
+    // url, exclude self, cap. Every page links its siblings → full graph.
+    const related = pages
+      .filter((p) => p.lang === lang && p.url !== url)
+      .sort((a, b) => a.url.localeCompare(b.url))
+      .slice(0, MAX_RELATED)
+      .map((p) => ({ url: p.url, title: p.title }));
     const datePublished = (r.published_at instanceof Date ? r.published_at : new Date()).toISOString();
     const html = renderPage({
       body: r.body as ContentBody,
       disclosureTag: (r.disclosure_tag as string | null) ?? null,
-      canonicalUrl: r.published_url as string,
-      language: r.language as string,
+      canonicalUrl: url,
+      language: lang,
       datePublished,
       ...(BRAND ? { brand: BRAND } : {}),
+      ...(related.length > 0 ? { relatedLinks: related } : {}),
     });
     await fs.mkdir(dir, { recursive: true });
     await fs.writeFile(path.join(dir, "index.html"), html, "utf8");
     n++;
   }
-  console.log(`[rerender-hub] re-rendered ${n} page(s) with the current template into ${OUT}`);
+  console.log(`[rerender-hub] re-rendered ${n} page(s) with hub-graph links into ${OUT}`);
 }
 
 main()

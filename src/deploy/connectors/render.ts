@@ -285,12 +285,14 @@ function aboutBrandHtml(brand: RenderInput["brand"]): string {
 }
 
 /** Hub-graph internal links (discovery lever) as a <nav class="related"> list. */
-function relatedLinksHtml(links: RenderInput["relatedLinks"]): string {
+function relatedLinksHtml(links: RenderInput["relatedLinks"], lang: string): string {
   if (!links || links.length === 0) return "";
+  const l2 = lang.split("-")[0]?.toLowerCase() ?? "en";
+  const heading = l2 === "ko" ? "관련 페이지" : l2 === "ja" ? "関連ページ" : l2 === "zh" ? "相关页面" : "Related";
   const items = links
     .map((l) => `        <li><a href="${esc(l.url)}">${esc(l.title)}</a></li>`)
     .join("\n");
-  return `\n      <nav class="related" aria-label="Related pages">\n        <h2>Related</h2>\n        <ul>\n${items}\n        </ul>\n      </nav>`;
+  return `\n      <nav class="related" aria-label="${esc(heading)}">\n        <h2>${esc(heading)}</h2>\n        <ul>\n${items}\n        </ul>\n      </nav>`;
 }
 
 /**
@@ -301,7 +303,7 @@ function relatedLinksHtml(links: RenderInput["relatedLinks"]): string {
 function composeArticle(cls: string, h1: string, innerHtml: string, input: RenderInput): string {
   return `    <article class="${cls}">
       <h1>${esc(h1)}</h1>
-${innerHtml}${aboutBrandHtml(input.brand)}${relatedLinksHtml(input.relatedLinks)}
+${innerHtml}${aboutBrandHtml(input.brand)}${relatedLinksHtml(input.relatedLinks, input.language)}
     </article>`;
 }
 
