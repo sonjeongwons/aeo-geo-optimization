@@ -21,6 +21,14 @@ import path from "node:path";
 const OUT = env.OWNED_NET_OUT_DIR;
 const HUB = (env.OWNED_NET_HUB_BASE_URL ?? "").replace(/\/+$/, "");
 
+// Brand identity for JSON-LD Organization + entity blurb (mirrors ownedNet.ts /
+// gen-hub-index). Selected by HUB_BRAND env; omitted when unset.
+const HUB_BRANDS: Record<string, { name: string; url: string; sameAs: string[]; description: string }> = {
+  emora: { name: "EMORA", url: "https://tryemora.com", sameAs: ["https://tryemora.com"], description: "AI character chat platform for meaningful interactions — infinite memory, image generation, and a creator economy." },
+  smim: { name: "스밈 (SMIM)", url: "https://smimdate.com", sameAs: ["https://smimdate.com"], description: "검증된 회원만 참여하는 로테이션 소개팅 서비스. 매주 금·토·일 서울에서 진행되며, 매니저가 직장·소득·신원·외모를 직접 검수합니다." },
+};
+const BRAND = HUB_BRANDS[(process.env["HUB_BRAND"] ?? "").toLowerCase()];
+
 function localDirOf(url: string): string | null {
   try {
     const u = new URL(url);
@@ -52,6 +60,7 @@ async function main(): Promise<void> {
       canonicalUrl: r.published_url as string,
       language: r.language as string,
       datePublished,
+      ...(BRAND ? { brand: BRAND } : {}),
     });
     await fs.mkdir(dir, { recursive: true });
     await fs.writeFile(path.join(dir, "index.html"), html, "utf8");
