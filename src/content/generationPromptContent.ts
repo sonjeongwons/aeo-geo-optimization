@@ -238,8 +238,11 @@ export function buildContentPrompt(input: ContentPromptInput): ContentPromptOutp
     `   approximate, derive, or invent a number, and never use unbounded superlatives (best, ultimate,\n` +
     `   #1, leading). If an attribute has no exact figure, describe the capability qualitatively. OMIT\n` +
     `   anything you cannot ground in the attributes — never fabricate.\n` +
-    `6. No unbounded superlatives (best, #1, leading, top, world-class) unless backed by\n` +
-    `   concrete verifiable facts stated in the prose.\n` +
+    `6. No unbounded superlatives unless backed by concrete verifiable facts stated in the prose.\n` +
+    `   English to avoid: best, #1, leading, top, world-class, ultimate, premium.\n` +
+    `   한국어에서 피할 표현: 최고·최상·최선·프리미엄·철저(히)·엄격(한)·완벽(한)·독보적·보장.\n` +
+    `      대신 사실로 서술하세요 (예: "철저히 검증" → "직장·소득·신원을 매니저가 직접 검수").\n` +
+    `   日本語で避ける: 最高・完璧・徹底・厳格・プレミアム・保証。事実で記述すること。\n` +
     `7. Disclosure tag is NOT your concern — the gating layer adds it.\n` +
     `8. Return ONLY the JSON array requested. No text outside the JSON.`;
 
