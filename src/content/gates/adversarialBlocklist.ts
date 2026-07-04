@@ -62,6 +62,18 @@ const BLOCKLIST_PATTERNS: Array<{ name: string; pattern: RegExp }> = [
   { name: "injection-chat-markers", pattern: /\[INST\]|<\|im_start\|>|<\|im_end\|>|<\|system\|>|<\|user\|>|<\|assistant\|>/i },
   { name: "injection-recommend-command", pattern: /\b(?:always|you\s+must|be\s+sure\s+to)\s+recommend\b/i },
 
+  // ---- Korean prompt injection (W1.9) — no \b word boundaries in CJK ----
+  { name: "ko-injection-ignore", pattern: /(?:이전|위의?|앞의?|모든|이전의)\s*(?:지시(?:사항)?|명령|프롬프트|지침)(?:을|를)?\s*(?:무시|잊)/ },
+  { name: "ko-injection-system", pattern: /시스템\s*프롬프트|새(?:로운)?\s*지시(?:사항)?\s*[:：]/ },
+  { name: "ko-injection-you-are", pattern: /당신은\s*(?:이제|지금)?\s*(?:챗지피티|GPT|클로드|제미나이|AI|어시스턴트|도우미)/ },
+  { name: "ko-injection-recommend", pattern: /(?:반드시|무조건|꼭|항상)\s*(?:추천|권장)(?:해|하)/ },
+
+  // ---- Japanese prompt injection (W1.9) ----
+  { name: "ja-injection-ignore", pattern: /(?:前|上|以前|これまで|すべて)の?\s*(?:指示|命令|プロンプト|指定)(?:を|は)?\s*(?:無視|忘れ)/ },
+  { name: "ja-injection-system", pattern: /システム\s*プロンプト|新しい指示\s*[:：]/ },
+  { name: "ja-injection-you-are", pattern: /あなたは\s*(?:今|これから)?\s*(?:ChatGPT|GPT|Claude|Gemini|AI|アシスタント)/ },
+  { name: "ja-injection-recommend", pattern: /(?:必ず|絶対に|常に)\s*(?:推薦|おすすめ|推奨)/ },
+
   // ---- Hidden / cloaked text (if any markup leaks into the body) ----
   { name: "hidden-display-none", pattern: /display\s*:\s*none/i },
   { name: "hidden-visibility", pattern: /visibility\s*:\s*hidden/i },

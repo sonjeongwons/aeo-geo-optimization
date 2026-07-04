@@ -73,6 +73,26 @@ const FAKE_SIGNAL_PATTERNS: Array<{ name: string; pattern: RegExp }> = [
   // "Award-winning" without a specific award in a resolved source
   // Not blocked here because it's typically superlative — caught by verifiableNumbers.
   // We leave "award-winning" for verifiableNumbers so this gate focuses on fake-signal patterns.
+
+  // ---- Korean fake-signal patterns (W1.9) — no \b word boundaries in CJK ----
+  // review/rating counts: "1,200개 리뷰", "후기 340개", "평점 4.8"
+  { name: "ko-review-count", pattern: /\d[\d,]*\s*(?:개[의]?\s*)?(?:리뷰|후기|평점|별점|사용후기|이용후기)/ },
+  { name: "ko-star-rating", pattern: /(?:별점|평점)\s*\d(?:\.\d+)?/ },
+  // social proof: "5만 명이 추천", "1000명의 회원이 애용"
+  { name: "ko-social-proof", pattern: /\d[\d,]*\s*(?:만|억)?\s*명(?:의)?\s*(?:회원|사용자|고객|이용자)?\s*(?:이|가|은|들이)?\s*(?:추천|애용|사랑|신뢰|극찬|만족)/ },
+  // engagement metrics: "1.2만 좋아요", "조회수 5만"
+  { name: "ko-engagement", pattern: /(?:좋아요|조회수|공유|찜|팔로워)\s*\d|\d[\d,]*\s*(?:만|억)?\s*(?:좋아요|조회수|공유|찜|팔로워)/ },
+  // testimonial scaffolding: "고객들이 추천합니다", "사용자가 극찬"
+  { name: "ko-testimonial", pattern: /(?:고객|사용자|회원|이용자)(?:들)?(?:이|은|께서)?\s*(?:말합니다|추천합니다|사랑합니다|극찬|만족합니다|호평)/ },
+  { name: "ko-community", pattern: /입소문|커뮤니티\s*인기|소셜\s*증거/ },
+
+  // ---- Japanese fake-signal patterns (W1.9) ----
+  { name: "ja-review-count", pattern: /\d[\d,]*\s*(?:件[の]?\s*)?(?:レビュー|口コミ|評価数)/ },
+  { name: "ja-star-rating", pattern: /星\s*\d(?:\.\d+)?|\d(?:\.\d+)?\s*つ星|評価\s*\d(?:\.\d+)?/ },
+  { name: "ja-social-proof", pattern: /\d[\d,]*\s*(?:万|億)?\s*人(?:が|の|に)\s*(?:推薦|愛用|絶賛|支持|満足)/ },
+  { name: "ja-engagement", pattern: /\d[\d,]*\s*(?:万|億)?\s*(?:いいね|シェア|フォロワー|再生)/ },
+  { name: "ja-testimonial", pattern: /(?:お客様|ユーザー|会員)(?:の声)?(?:が|は|も)?\s*(?:絶賛|愛用|推薦|満足|支持)/ },
+  { name: "ja-community", pattern: /口コミで話題|人気沸騰|バズ/ },
 ];
 
 // ---------------------------------------------------------------------------
