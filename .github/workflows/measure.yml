@@ -18,6 +18,9 @@ on:
       grounding_pct:
         description: "% of work-units to ground (0-100)"
         default: "3"
+      report_only:
+        description: "skip the measurement cycle; just build + send the email report from existing data"
+        default: "false"
 
 jobs:
   measure:
@@ -64,7 +67,7 @@ jobs:
         if: steps.guard.outputs.armed == 'true'
         run: npm run migrate
       - name: Run measurement cycle (each customer, sequential — shared Gemini budget)
-        if: steps.guard.outputs.armed == 'true'
+        if: steps.guard.outputs.armed == 'true' && github.event.inputs.report_only != 'true'
         run: |
           for c in $CUSTOMERS; do
             echo "::group::measure $c"
@@ -81,7 +84,7 @@ jobs:
             echo "::endgroup::"
           done
       - name: Upload report artifact
-        if: steps.guard.outputs.armed == 'true'
+        if: steps.guard.outputs.armed == 'true' && github.event.inputs.report_only != 'true'
         uses: actions/upload-artifact@v4
         with:
           name: run-reports
