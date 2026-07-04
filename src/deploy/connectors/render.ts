@@ -783,6 +783,81 @@ export function renderRobots(opts: { sitemapUrl?: string }): string {
 }
 
 // ---------------------------------------------------------------------------
+// renderRss — deterministic RSS 2.0 feed (W9.3) — freshness discovery lever
+// ---------------------------------------------------------------------------
+
+export interface RssItem {
+  url: string;
+  title: string;
+  description: string;
+  /** ISO-8601 publish/update instant. */
+  isoDate: string;
+}
+
+/** Format an ISO-8601 instant as an RFC-822 date (RSS pubDate). Deterministic. */
+function rfc822(iso: string): string {
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return "";
+  const days = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+  const mons = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+  const p2 = (n: number): string => String(n).padStart(2, "0");
+  return (
+    `${days[d.getUTCDay()]}, ${p2(d.getUTCDate())} ${mons[d.getUTCMonth()]} ${d.getUTCFullYear()} ` +
+    `${p2(d.getUTCHours())}:${p2(d.getUTCMinutes())}:${p2(d.getUTCSeconds())} GMT`
+  );
+}
+
+/**
+ * Render a deterministic RSS 2.0 feed for an owned hub. Items are sorted
+ * newest-first (then by URL for stable ties) so answer engines with a freshness
+ * bias (notably Perplexity) can discover new/updated pages. PURE — same inputs →
+ * byte-identical output.
+ *
+ * @param opts.title       Feed title (brand-scoped).
+ * @param opts.homeUrl     Hub root URL (channel link).
+ * @param opts.feedUrl     Absolute URL of this feed (atom:link self).
+ * @param opts.language    BCP-47 language of the hub.
+ * @param opts.description Feed description.
+ * @param opts.items       Feed items.
+ */
+export function renderRss(opts: {
+  title: string;
+  homeUrl: string;
+  feedUrl: string;
+  language: string;
+  description: string;
+  items: RssItem[];
+}): string {
+  const sorted = [...opts.items].sort((a, b) =>
+    a.isoDate === b.isoDate ? a.url.localeCompare(b.url) : (a.isoDate < b.isoDate ? 1 : -1)
+  );
+  const lastBuild = sorted.length > 0 ? rfc822(sorted[0]!.isoDate) : "";
+  const items = sorted
+    .map(
+      (it) =>
+        `    <item>\n` +
+        `      <title>${esc(it.title)}</title>\n` +
+        `      <link>${esc(it.url)}</link>\n` +
+        `      <guid isPermaLink="true">${esc(it.url)}</guid>\n` +
+        `      <pubDate>${esc(rfc822(it.isoDate))}</pubDate>\n` +
+        `      <description>${esc(it.description)}</description>\n` +
+        `    </item>`
+    )
+    .join("\n");
+  return `<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
+  <channel>
+    <title>${esc(opts.title)}</title>
+    <link>${esc(opts.homeUrl)}</link>
+    <atom:link href="${esc(opts.feedUrl)}" rel="self" type="application/rss+xml"/>
+    <description>${esc(opts.description)}</description>
+    <language>${esc(opts.language)}</language>${lastBuild ? `\n    <lastBuildDate>${esc(lastBuild)}</lastBuildDate>` : ""}
+${items}
+  </channel>
+</rss>`;
+}
+
+// ---------------------------------------------------------------------------
 // renderPage — main entry point
 // ---------------------------------------------------------------------------
 

@@ -15,7 +15,7 @@ import "../src/config/env.js";
 import { env } from "../src/config/env.js";
 import { getDb, closeDb } from "../src/db/kysely.js";
 import { closePool } from "../src/db/pool.js";
-import { PAGE_STYLE, renderRobots } from "../src/deploy/connectors/render.js";
+import { PAGE_STYLE, renderRobots, renderRss, type RssItem } from "../src/deploy/connectors/render.js";
 import { promises as fs } from "node:fs";
 import path from "node:path";
 
@@ -187,6 +187,7 @@ async function main(): Promise<void> {
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <link rel="canonical" href="${esc(HUB)}/">
+  <link rel="alternate" type="application/rss+xml" title="${esc(BRAND.orgName)}" href="${esc(HUB)}/feed.xml">
   <title>${esc(BRAND.titleTag)}</title>
   <meta name="description" content="${esc(BRAND.metaDescription)} Official site: ${esc(EMORA_OFFICIAL)}">
   <meta property="og:type" content="website">
@@ -220,7 +221,27 @@ ${sections}
   // cheapest real discovery lever for ChatGPT-search / Perplexity / Gemini.
   await fs.writeFile(path.join(OUT, "robots.txt"), renderRobots({ sitemapUrl: `${HUB}/sitemap.xml` }), "utf8");
 
-  console.log(`[hub-index] wrote linking index.html: ${seen.size} pages across ${byLang.size} language(s) + Organization JSON-LD + robots.txt`);
+  // Emit an RSS 2.0 feed (W9.3) — a freshness discovery lever (Perplexity). Built
+  // from DB rows carrying a real published_at; newest-first inside renderRss.
+  const feedItems: RssItem[] = [];
+  for (const r of rows) {
+    const at = r.published_at as Date | string | null;
+    if (at == null) continue;
+    const iso = at instanceof Date ? at.toISOString() : new Date(at).toISOString();
+    const title = bodyTitle(r.body).slice(0, 110);
+    feedItems.push({ url: r.published_url as string, title, description: title, isoDate: iso });
+  }
+  const feedXml = renderRss({
+    title: BRAND.titleTag,
+    homeUrl: `${HUB}/`,
+    feedUrl: `${HUB}/feed.xml`,
+    language: BRAND.htmlLang,
+    description: BRAND.metaDescription,
+    items: feedItems,
+  });
+  await fs.writeFile(path.join(OUT, "feed.xml"), feedXml, "utf8");
+
+  console.log(`[hub-index] wrote linking index.html: ${seen.size} pages across ${byLang.size} language(s) + Organization JSON-LD + robots.txt + feed.xml (${feedItems.length} items)`);
 }
 
 main()

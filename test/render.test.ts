@@ -20,6 +20,7 @@ import {
   renderPage,
   renderRobots,
   renderSitemap,
+  renderRss,
   ANSWER_ENGINE_BOTS,
   type RenderInput,
 } from "../src/deploy/connectors/render.js";
@@ -334,6 +335,36 @@ describe("renderRobots", () => {
 // ---------------------------------------------------------------------------
 // sitemap still deterministic
 // ---------------------------------------------------------------------------
+
+describe("renderRss (W9.3)", () => {
+  const items = [
+    { url: "https://h/en/a/", title: "Alpha", description: "First", isoDate: "2026-07-01T00:00:00.000Z" },
+    { url: "https://h/en/c/", title: "Gamma", description: "Third", isoDate: "2026-07-03T00:00:00.000Z" },
+    { url: "https://h/en/b/", title: "Beta & <friends>", description: "Second", isoDate: "2026-07-02T00:00:00.000Z" },
+  ];
+  const feed = renderRss({ title: "Hub", homeUrl: "https://h/", feedUrl: "https://h/feed.xml", language: "en", description: "d", items });
+
+  it("is valid RSS 2.0 with a self atom:link", () => {
+    expect(feed).toContain('<rss version="2.0"');
+    expect(feed).toContain('<atom:link href="https://h/feed.xml" rel="self"');
+    expect(feed).toContain("<channel>");
+  });
+
+  it("sorts items newest-first", () => {
+    const order = ["Gamma", "Beta", "Alpha"].map((t) => feed.indexOf(t));
+    expect(order[0]).toBeLessThan(order[1]!);
+    expect(order[1]).toBeLessThan(order[2]!);
+  });
+
+  it("emits RFC-822 pubDate and escapes item titles", () => {
+    expect(feed).toMatch(/<pubDate>\w{3}, \d{2} \w{3} \d{4} \d{2}:\d{2}:\d{2} GMT<\/pubDate>/);
+    expect(feed).toContain("Beta &amp; &lt;friends&gt;");
+  });
+
+  it("is byte-deterministic", () => {
+    expect(renderRss({ title: "Hub", homeUrl: "https://h/", feedUrl: "https://h/feed.xml", language: "en", description: "d", items })).toBe(feed);
+  });
+});
 
 describe("renderSitemap", () => {
   it("sorts by loc and is byte-stable", () => {
