@@ -184,6 +184,45 @@ describe("render JSON-LD shape", () => {
 // Reader UX: CSS, home link, valid FAQ markup (W5.2/W5.5)
 // ---------------------------------------------------------------------------
 
+describe("render verified references (W4.2)", () => {
+  const withRefs = (): RenderInput => ({
+    ...base(answerBody),
+    references: [
+      { text: "스밈은 참가비 1인 50,000원입니다.", url: "https://smimdate.com" },
+      { text: "연봉 7천만원 이상 대상 (owner-attested)" },
+    ],
+  });
+
+  it("renders a visible <section class=references> of <cite> items", () => {
+    const html = renderPage(withRefs());
+    expect(html).toContain('<section class="references"');
+    expect(html).toContain("<cite>");
+    expect(html).toContain("50,000원");
+    // one with a URL → link; one without → plain cite
+    expect(html).toContain('<a href="https://smimdate.com">');
+  });
+
+  it("adds schema.org citation to the JSON-LD", () => {
+    const ld = extractJsonLd(renderPage(withRefs()));
+    expect(Array.isArray(ld.citation)).toBe(true);
+    expect(ld.citation).toHaveLength(2);
+    expect(ld.citation[0]["@type"]).toBe("CreativeWork");
+    expect(ld.citation[0].url).toBe("https://smimdate.com");
+    expect(ld.citation[1].url).toBeUndefined();
+  });
+
+  it("omits references + citation when none supplied", () => {
+    const html = renderPage(base(answerBody));
+    expect(html).not.toContain('class="references"');
+    expect(extractJsonLd(html).citation).toBeUndefined();
+  });
+
+  it("uses a language-aware heading", () => {
+    const ko = renderPage({ ...base(definitionBody, "ko"), references: [{ text: "출처 텍스트" }] });
+    expect(ko).toContain("<h2>출처</h2>");
+  });
+});
+
 describe("render reader UX", () => {
   it("every page ships the deterministic stylesheet + CJK font stack", () => {
     const html = renderPage(base(answerBody));

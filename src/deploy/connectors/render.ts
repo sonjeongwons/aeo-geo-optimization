@@ -81,6 +81,14 @@ export interface RenderInput {
    * discovery lever). Rendered as a <nav class="related"> list.
    */
   relatedLinks?: Array<{ url: string; title: string }>;
+  /**
+   * Optional verified references (W4.2) — the bound claim_sources behind this
+   * page's factual claims. Rendered as a visible <section class="references">
+   * <cite> list AND schema.org `citation`. Research P0 "Cite-Sources" lever
+   * (+115% for low-authority hubs — exactly a new GitHub Pages hub). §7-safe:
+   * ONLY pass verified sources (never fabricated citations).
+   */
+  references?: Array<{ text: string; url?: string }>;
 }
 
 // ---------------------------------------------------------------------------
@@ -221,6 +229,10 @@ export const PAGE_STYLE =
   "nav.related{margin:2rem 0 0;border-top:1px solid #d0d7de;padding-top:1rem}" +
   "nav.related h2{font-size:1rem;margin:.2rem 0 .5rem}" +
   "nav.related ul{margin:0;padding-left:1.1rem}nav.related li{margin:.3rem 0}" +
+  "section.references{margin:1.8rem 0 0;border-top:1px solid #d0d7de;padding-top:1rem;font-size:.9rem}" +
+  "section.references h2{font-size:1rem;margin:.2rem 0 .5rem}" +
+  "section.references ul{margin:0;padding-left:1.1rem}section.references li{margin:.3rem 0}" +
+  "section.references cite{font-style:normal;color:#57606a}" +
   "footer{max-width:720px;margin:2rem auto 0;padding:1rem 1.25rem 2rem;" +
   "border-top:1px solid #d0d7de;color:#57606a;font-size:.85rem}" +
   "@media(prefers-color-scheme:dark){body{background:#0d1117;color:#e6edf3}" +
@@ -371,6 +383,7 @@ function deriveJsonLd(body: ContentBody, input: RenderInput): JsonLd | undefined
   const brand = input.brand;
   const org = brand ? brandOrg(brand) : undefined;
   const isPartOf = { "@type": "WebSite", url: hub, ...(brand ? { name: brand.name } : {}) };
+  const refs = input.references ?? [];
   const common = {
     "@context": "https://schema.org",
     inLanguage: input.language,
@@ -379,6 +392,10 @@ function deriveJsonLd(body: ContentBody, input: RenderInput): JsonLd | undefined
     dateModified: input.datePublished,
     isPartOf,
     ...(org ? { publisher: org, author: org } : {}),
+    // W4.2 schema.org citation — the verified sources behind the page's claims.
+    ...(refs.length > 0
+      ? { citation: refs.map((r) => ({ "@type": "CreativeWork", name: r.text, ...(r.url ? { url: r.url } : {}) })) }
+      : {}),
   };
 
   if (body.content_type === "faq") {
@@ -474,14 +491,32 @@ function relatedLinksHtml(links: RenderInput["relatedLinks"], lang: string): str
 }
 
 /**
+ * Visible verified-references block (W4.2) — the bound claim_sources behind the
+ * page's facts, as a <cite> list. Language-aware heading. §7-safe (caller passes
+ * only verified sources).
+ */
+function referencesHtml(refs: RenderInput["references"], lang: string): string {
+  if (!refs || refs.length === 0) return "";
+  const l2 = lang.split("-")[0]?.toLowerCase() ?? "en";
+  const heading = l2 === "ko" ? "출처" : l2 === "ja" ? "出典" : l2 === "zh" ? "来源" : "Sources";
+  const items = refs
+    .map((r) => {
+      const inner = r.url ? `<a href="${esc(r.url)}">${esc(r.text)}</a>` : esc(r.text);
+      return `        <li><cite>${inner}</cite></li>`;
+    })
+    .join("\n");
+  return `\n      <section class="references" aria-label="${esc(heading)}">\n        <h2>${esc(heading)}</h2>\n        <ul>\n${items}\n        </ul>\n      </section>`;
+}
+
+/**
  * Compose the <article> body: a semantic H1 + the type-specific inner HTML +
- * the entity blurb + related links. Shared by every content renderer so all
- * pages get the same AEO structure.
+ * the entity blurb + verified references + related links. Shared by every
+ * content renderer so all pages get the same AEO structure.
  */
 function composeArticle(cls: string, h1: string, innerHtml: string, input: RenderInput): string {
   return `    <article class="${cls}">
       <h1>${esc(h1)}</h1>
-${innerHtml}${aboutBrandHtml(input.brand, input.language)}${relatedLinksHtml(input.relatedLinks, input.language)}
+${innerHtml}${aboutBrandHtml(input.brand, input.language)}${referencesHtml(input.references, input.language)}${relatedLinksHtml(input.relatedLinks, input.language)}
     </article>`;
 }
 
