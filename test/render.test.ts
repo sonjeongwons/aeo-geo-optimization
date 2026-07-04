@@ -218,6 +218,55 @@ describe("render headline + pipe guard", () => {
     expect(html).toContain("Creators can design"); // full prose still present in body
   });
 
+  it("a single leading pipe never leaks into h1/title (reviewer P1 #1)", () => {
+    const body: AnswerBlockBody = {
+      content_type: "answer_block",
+      text: "| just one pipe here and no closing delimiter at all in this line",
+      length_units: 12,
+      numeric_claim_ids: [],
+      source_ids: [],
+    };
+    const html = renderPage(base(body));
+    expect(h1Of(html)).not.toContain("|");
+    expect(titleOf(html)).not.toContain("|");
+    expect(extractJsonLd(html).headline).not.toContain("|");
+  });
+
+  it("a table-only / whitespace body still yields a non-empty pipe-free h1 + DefinedTerm name (reviewer P1 #3, P2 #4)", () => {
+    const tableOnly: DefinitionSentenceBody = {
+      content_type: "definition",
+      text: "| --- | --- |",
+      meaning_key: "k",
+    };
+    const html = renderPage(base(tableOnly));
+    const h1 = h1Of(html);
+    expect(h1.length).toBeGreaterThan(0);
+    expect(h1).not.toContain("|");
+    // falls back to the brand name, never empty
+    expect(h1).toBe("EMORA");
+    const ld = extractJsonLd(html);
+    expect(ld["@type"]).toBe("DefinedTerm");
+    expect(ld.name.length).toBeGreaterThan(0);
+    expect(ld.description.length).toBeGreaterThan(0);
+    // the raw delimiter must not survive anywhere in the body as "| ---"
+    expect(html).not.toContain("| ---");
+  });
+
+  it("a ragged pipe table is normalised to the header width (reviewer P1 #2)", () => {
+    const body: AnswerBlockBody = {
+      content_type: "answer_block",
+      text: "Plans overview.\n| A | B | C |\n| --- | --- | --- |\n| x | y |",
+      length_units: 12,
+      numeric_claim_ids: [],
+      source_ids: [],
+    };
+    const html = renderPage(base(body));
+    // every <tr> in the rendered table has exactly 3 <td> (padded), none ragged
+    const trs = [...html.matchAll(/<tr>([\s\S]*?)<\/tr>/g)].map((m) => (m[1]!.match(/<td>/g) ?? []).length);
+    expect(trs.length).toBeGreaterThan(0);
+    for (const n of trs) expect(n).toBe(3);
+  });
+
   it("markdown-table markup never leaks into h1/title/meta/JSON-LD (W5.1)", () => {
     const poisoned: AnswerBlockBody = {
       content_type: "answer_block",

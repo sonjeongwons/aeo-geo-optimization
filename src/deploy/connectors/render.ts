@@ -164,9 +164,31 @@ function truncateAtBoundary(text: string, max: number): string {
   return cut.replace(/[\s,;:।、，；：]+$/, "") + "…";
 }
 
-/** Derive a short, pipe-free headline (for h1/title/JSON-LD headline). */
+/** Remove stray inline table pipes and collapse whitespace (for headings). */
+function cleanInline(text: string): string {
+  return text.replace(/\|+/g, " ").replace(/\s+/g, " ").trim();
+}
+
+/**
+ * Derive a short, pipe-free headline (for h1/title/JSON-LD headline). May be ""
+ * for a body that is entirely table markup / whitespace — callers MUST supply a
+ * non-empty fallback via headlineOr() so no empty <h1>/DefinedTerm name ships.
+ */
 function headlineOf(text: string, max = 70): string {
-  return truncateAtBoundary(firstSentence(stripPipeTables(text)), max);
+  const cleaned = cleanInline(stripPipeTables(text));
+  const s = firstSentence(cleaned);
+  return s ? truncateAtBoundary(s, max) : "";
+}
+
+/** headlineOf with a guaranteed non-empty result (falls back to `fallback`). */
+function headlineOr(text: string, fallback: string, max = 70): string {
+  const h = headlineOf(text, max);
+  return h.length > 0 ? h : fallback;
+}
+
+/** The best non-empty title fallback for a page: brand name, else a label. */
+function fallbackTitle(input: RenderInput, label: string): string {
+  return input.brand?.name ?? label;
 }
 
 // ---------------------------------------------------------------------------
@@ -372,12 +394,15 @@ function deriveJsonLd(body: ContentBody, input: RenderInput): JsonLd | undefined
   }
 
   if (body.content_type === "definition") {
-    // A definition is a DefinedTerm, not an Article (W4.3).
+    // A definition is a DefinedTerm, not an Article (W4.3). name/description MUST
+    // be non-empty (schema.org requires it) even for a pathological body.
+    const dtName = headlineOr(body.text, brand?.name ?? "Definition", 90);
+    const dtDesc = cleanInline(stripPipeTables(body.text)) || dtName;
     return {
       ...common,
       "@type": "DefinedTerm",
-      name: headlineOf(body.text, 90),
-      description: stripPipeTables(body.text),
+      name: dtName,
+      description: dtDesc,
       ...(org ? { inDefinedTermSet: { "@type": "DefinedTermSet", name: brand!.name, url: hub } } : {}),
     } as unknown as JsonLd;
   }
@@ -385,7 +410,7 @@ function deriveJsonLd(body: ContentBody, input: RenderInput): JsonLd | undefined
   let articleBody = "";
   switch (body.content_type) {
     case "answer_block":
-      articleBody = stripPipeTables(body.text);
+      articleBody = cleanInline(stripPipeTables(body.text));
       break;
     case "comparison":
       articleBody = body.rows
@@ -406,15 +431,16 @@ function deriveJsonLd(body: ContentBody, input: RenderInput): JsonLd | undefined
   }
   const headline =
     body.content_type === "comparison"
-      ? (body.columns.length > 0 ? body.columns.join(" vs ") : "Comparison")
+      ? (body.columns.length > 0 ? body.columns.join(" vs ") : fallbackTitle(input, "Comparison"))
       : body.content_type === "case_study"
-        ? headlineOf(body.situation, 110)
-        : headlineOf(body.text, 110);
+        ? headlineOr(body.situation, fallbackTitle(input, "Case study"), 110)
+        : headlineOr(body.text, fallbackTitle(input, "Article"), 110);
   return {
     ...common,
     "@type": "Article",
+    // articleBody is schema.org-required non-empty; fall back to the headline.
     headline,
-    articleBody,
+    articleBody: articleBody.trim().length > 0 ? articleBody : headline,
     ...(org ? { about: { "@type": "Organization", name: brand!.name } } : {}),
   } as unknown as JsonLd;
 }
@@ -481,8 +507,15 @@ function renderProse(text: string): string {
       .filter((l) => !/^\|[\s:|-]+\|?$/.test(l.trim())) // drop the --- delimiter row
       .map((l) => l.trim().replace(/^\|/, "").replace(/\|$/, "").split("|").map((c) => c.trim()));
     if (rows.length > 0) {
+      // Normalise every row to the widest row's cell count so the <table> is
+      // never ragged (reviewer P1 #2) — pad short rows, truncate long ones.
+      const width = Math.max(...rows.map((r) => r.length));
       const body = rows
-        .map((cells) => `        <tr>${cells.map((c) => `<td>${esc(c)}</td>`).join("")}</tr>`)
+        .map((r) => {
+          const cells = [...r];
+          while (cells.length < width) cells.push("");
+          return `        <tr>${cells.slice(0, width).map((c) => `<td>${esc(c)}</td>`).join("")}</tr>`;
+        })
         .join("\n");
       out.push(`      <table>\n${body}\n      </table>`);
     }
@@ -498,12 +531,15 @@ function renderProse(text: string): string {
     if (t.length > 0) out.push(`      <p>${esc(t)}</p>`);
   }
   flushTable();
-  return out.length > 0 ? out.join("\n") : `      <p>${esc(text)}</p>`;
+  if (out.length > 0) return out.join("\n");
+  // Fallback MUST be pipe-free — never dump raw "| --- |" markup (reviewer P2 #4).
+  const fb = cleanInline(stripPipeTables(text));
+  return fb.length > 0 ? `      <p>${esc(fb)}</p>` : "";
 }
 
 function renderDefinition(body: DefinitionSentenceBody, input: RenderInput): string {
-  const h1 = headlineOf(body.text);
-  const main = composeArticle("definition", h1, `      <p>${esc(stripPipeTables(body.text))}</p>`, input);
+  const h1 = headlineOr(body.text, fallbackTitle(input, "Definition"));
+  const main = composeArticle("definition", h1, `      <p>${esc(cleanInline(stripPipeTables(body.text)) || h1)}</p>`, input);
   return htmlPage(buildPageOpts({
     lang: input.language,
     canonical: input.canonicalUrl,
@@ -519,8 +555,9 @@ function renderDefinition(body: DefinitionSentenceBody, input: RenderInput): str
 
 function renderAnswerBlock(body: AnswerBlockBody, input: RenderInput): string {
   // Short, distinct h1 (W5.4) — never the full multi-sentence block; pipe-free (W5.1).
-  const h1 = headlineOf(body.text);
-  const main = composeArticle("answer-block", h1, renderProse(body.text), input);
+  const h1 = headlineOr(body.text, fallbackTitle(input, "Overview"));
+  const inner = renderProse(body.text) || `      <p>${esc(h1)}</p>`;
+  const main = composeArticle("answer-block", h1, inner, input);
   return htmlPage(buildPageOpts({
     lang: input.language,
     canonical: input.canonicalUrl,
@@ -542,7 +579,7 @@ function renderFaq(body: FaqBody, input: RenderInput): string {
     )
     .join("\n");
 
-  const h1 = body.rows[0] != null ? headlineOf(body.rows[0].q, 90) : "FAQ";
+  const h1 = body.rows[0] != null ? headlineOr(body.rows[0].q, "FAQ", 90) : "FAQ";
   // Valid markup: a <div class="faq-list"> of <details>, NOT a <dl> (W5.5).
   const main = composeArticle("faq", h1, `      <div class="faq-list">\n${rows}\n      </div>`, input);
 
@@ -625,7 +662,7 @@ ${metrics}
   const inner = `      <section class="situation"><h2>Situation</h2><p>${esc(body.situation)}</p></section>
       <section class="action"><h2>Action</h2><p>${esc(body.action)}</p></section>
       <section class="result"><h2>Result</h2><p>${esc(body.result)}</p></section>${metricsTable}`;
-  const h1 = headlineOf(body.situation);
+  const h1 = headlineOr(body.situation, fallbackTitle(input, "Case study"));
   const main = composeArticle("case-study", h1, inner, input);
 
   const title = h1;

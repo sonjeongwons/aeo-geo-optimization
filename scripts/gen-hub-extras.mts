@@ -44,7 +44,10 @@ function bodyToMarkdown(b: any): { title: string; md: string } {
         .join("\n")
         .trim();
       const clean = prose.length > 0 ? prose : String(b.text);
-      return { title: clean.split(/[.。!?]/)[0]!.slice(0, 70), md: clean };
+      // Strip any residual inline pipe from the title (a single-pipe line isn't
+      // caught by the table filter above) so "| x" never becomes the title.
+      const title = clean.split(/[.。!?]/)[0]!.replace(/\|/g, " ").replace(/\s+/g, " ").trim().slice(0, 70);
+      return { title, md: clean };
     }
     case "faq":
       return {
