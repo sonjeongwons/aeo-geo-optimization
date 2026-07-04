@@ -571,10 +571,11 @@ export class OwnedNetConnector implements ChannelConnector {
     // Update sitemap — merge with existing entries.
     const outDir = this._target.getOutDir();
     const existing = outDir != null ? await readSitemapEntries(outDir) : [];
-    const isoDate = now.toISOString().slice(0, 10); // YYYY-MM-DD
+    // Full W3C datetime (not date-only) so a same-day material republish changes
+    // <lastmod> and matches the on-page datePublished/dateModified (W9.4).
     const updated = _mergeSitemapEntry(existing, {
       loc: plannedUrl,
-      lastmod: isoDate,
+      lastmod: datePublished,
     });
     await this._target.writeSitemap(updated);
 
