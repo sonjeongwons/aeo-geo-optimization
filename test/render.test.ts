@@ -171,6 +171,22 @@ describe("render JSON-LD shape", () => {
     expect(ld.headline).toContain("EMORA");
   });
 
+  it("comparison also carries a schema.org ItemList of the compared entities", () => {
+    const body: ComparisonBody = {
+      content_type: "comparison",
+      columns: ["Feature", "Memory", "Group chat"],
+      rows: [
+        { entity: "EMORA", cells: [{ value: "Persistent", claim_id: null }, { value: "Yes", claim_id: null }] },
+        { entity: "Character.AI", cells: [{ value: "Limited", claim_id: null }, { value: "No", claim_id: null }] },
+      ],
+    };
+    const ld = extractJsonLd(renderPage(base(body)));
+    expect(ld.mainEntity?.["@type"]).toBe("ItemList");
+    expect(ld.mainEntity.itemListElement).toHaveLength(2);
+    expect(ld.mainEntity.itemListElement[0]).toMatchObject({ "@type": "ListItem", position: 1, name: "EMORA" });
+    expect(ld.mainEntity.itemListElement[1]).toMatchObject({ position: 2, name: "Character.AI" });
+  });
+
   it("omits author/publisher when no brand is supplied", () => {
     const noBrand: RenderInput = { ...base(answerBody) };
     delete (noBrand as { brand?: unknown }).brand;

@@ -459,6 +459,22 @@ function deriveJsonLd(body: ContentBody, input: RenderInput): JsonLd | undefined
       : body.content_type === "case_study"
         ? headlineOr(body.situation, fallbackTitle(input, "Case study"), 110)
         : headlineOr(body.text, fallbackTitle(input, "Article"), 110);
+  // Comparison pages ALSO carry a machine-readable schema.org ItemList of the
+  // compared entities — answer engines (AI Overviews / Perplexity) strongly
+  // prefer ranked/enumerated lists for "X vs Y" / "alternatives" queries.
+  const comparisonItemList =
+    body.content_type === "comparison" && body.rows.length > 0
+      ? {
+          mainEntity: {
+            "@type": "ItemList",
+            itemListElement: body.rows.map((r, i) => ({
+              "@type": "ListItem",
+              position: i + 1,
+              name: r.entity,
+            })),
+          },
+        }
+      : {};
   return {
     ...common,
     "@type": "Article",
@@ -466,6 +482,7 @@ function deriveJsonLd(body: ContentBody, input: RenderInput): JsonLd | undefined
     headline,
     articleBody: articleBody.trim().length > 0 ? articleBody : headline,
     ...(org ? { about: { "@type": "Organization", name: brand!.name } } : {}),
+    ...comparisonItemList,
   } as unknown as JsonLd;
 }
 
