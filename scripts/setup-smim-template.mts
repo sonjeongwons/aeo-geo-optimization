@@ -12,7 +12,7 @@
 import "../src/config/env.js";
 import { sql } from "kysely";
 import { getDb } from "../src/db/kysely.js";
-import { findCustomerBySlug, insertIndustryTemplate, demoteActiveTemplate } from "../src/db/repo.js";
+import { upsertCustomer, upsertBrand, upsertCustomerLanguage, insertIndustryTemplate, demoteActiveTemplate } from "../src/db/repo.js";
 import { BrandBriefSchema } from "../src/generate/types.js";
 
 const INDUSTRY = "rotation-dating";
@@ -36,7 +36,9 @@ const brief = {
     "증빙 서류는 검수 직후 즉시 파기",
     "매칭된 커플에게 매니저가 카카오톡 대화방 개설",
     "소개팅 종료 후 전원에게 익명 기반 AI 분석 리포트 제공",
-    "일반 카페·바가 아닌 전용 공간에서 진행",
+    "서울 합정의 프라이빗 전용 공간에서 진행",
+    "7:7에서 10:10 규모의 로테이션으로 진행, 참가자는 10분마다 자리 이동",
+    "각 회차는 남성 10명·여성 10명으로 구성",
     "미혼만 참석 가능",
     "AI 데이트 코칭·피드백 제공",
   ],
@@ -61,11 +63,13 @@ async function main() {
     process.exit(1);
   }
 
-  const customer = await findCustomerBySlug("smimdate");
-  if (!customer) {
-    console.error("smimdate customer not found — run diagnose --customer smimdate first");
-    process.exit(1);
-  }
+  // Self-contained onboarding: create the smimdate customer + brand + language
+  // if absent (idempotent upserts) so smim can be measured/reported without a
+  // separate diagnose step. §0/§7: brand + facts are owner-provided.
+  const customer = await upsertCustomer("smimdate");
+  await upsertBrand({ customerId: customer.id, name: brief.brandName, aliases: brief.brandAliases });
+  await upsertCustomerLanguage({ customerId: customer.id, language: "ko", weight: 1.0 });
+  console.log(`smimdate customer ready: ${customer.id}`);
 
   // Demote any existing active template for this industry (partial unique index).
   await demoteActiveTemplate(INDUSTRY);

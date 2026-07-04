@@ -4,7 +4,7 @@
     "customer_slug": "emora-mini",
     "source_ref": "https://tryemora.com",
     "attested_by": "doradola38@gmail.com",
-    "notes": "Owner-attested EMORA product facts, confirmed 2026-07-03. Extracted from the operator's own live owned-net hub content and confirmed by the owner. §7-safe capability facts only — marketing superlatives (advanced/robust/sophisticated/best) intentionally excluded in favor of the concrete capabilities."
+    "notes": "Owner-attested EMORA product facts. Original set confirmed 2026-07-03. 2026-07-04: owner directed extraction from the operator's OWN domain tryemora.com (owner-authorized §0 exception, limited to the owned domain — never competitors). §7 FILTERING APPLIED: concrete capabilities + verifiable entity facts included. DELIBERATELY EXCLUDED per §7#3 (fake signals): the site's 4.8/5 star rating + review count, and the 'Sarah K., Beta User' testimonial. HELD pending a verifiable external source (§7#2 / 표시광고법 risk): landing-page hero counters (10,000+ users / 50,000+ conversations / 2,300+ characters) — add only with an app-store or press source."
   },
   "facts": [
     { "text": "EMORA is an AI character chat platform for meaningful interactions.", "kind": "capability" },
@@ -13,6 +13,12 @@
     { "text": "EMORA has a character bonding system for deeper, more personalized connections with AI characters.", "kind": "capability" },
     { "text": "EMORA has a creator economy where users can design, share, and monetize their own AI characters and worlds.", "kind": "capability" },
     { "text": "EMORA offers a free-to-start model so users can begin without an initial cost.", "kind": "capability" },
-    { "text": "EMORA fosters a creator community where users share, collaborate, and give feedback on character designs.", "kind": "capability" }
+    { "text": "EMORA fosters a creator community where users share, collaborate, and give feedback on character designs.", "kind": "capability" },
+    { "text": "EMORA supports group chats where multiple AI characters can take part in the same conversation.", "kind": "capability" },
+    { "text": "EMORA has a creator currency called GEM; creators earn GEM when other users chat with the characters they created.", "kind": "capability" },
+    { "text": "EMORA lets users unlock story content by building their relationship with a character over time.", "kind": "capability" },
+    { "text": "EMORA supports private one-on-one conversations with AI characters.", "kind": "capability" },
+    { "text": "EMORA supports 14 languages.", "kind": "numeric", "value": 14, "unit": "languages", "bound": "exact" },
+    { "text": "EMORA is operated by Toast Co., Ltd. (주식회사 토스트), a company based in Incheon, South Korea.", "kind": "capability" }
   ]
 }

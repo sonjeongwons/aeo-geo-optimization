@@ -4,9 +4,13 @@
     "customer_slug": "smimdate",
     "source_ref": "https://smimdate.com",
     "attested_by": "j1.son@samsung.com",
-    "notes": "Owner-operated service. All facts are owner-provided AND owner-verified (the owner directed us to use the smimdate.com wording as-is, '다 사실이야'). §7-safe FACTUAL claims only — marketing superlatives (최고/1등 등) are intentionally excluded; a category descriptor like '프리미엄' is avoided in favor of the concrete verification facts that justify it."
+    "notes": "Owner-operated service. All facts are owner-provided AND owner-verified (owner directed use of smimdate.com wording as-is, '다 사실이야'; 2026-07-04 owner directed extraction from the OWN domain smimdate.com — owner-authorized §0 exception, owned domain only). §7-safe FACTUAL service-term claims only — marketing superlatives (최고/1등/프리미엄 as a bare claim) intentionally excluded in favor of the concrete verification facts that justify them."
   },
   "facts": [
+    { "text": "스밈은 서울 합정의 프라이빗 전용 공간에서 소개팅을 진행합니다.", "kind": "capability" },
+    { "text": "스밈은 7:7에서 10:10 규모의 로테이션으로 진행되며, 참가자는 10분마다 자리를 옮겨 여러 상대와 대화합니다.", "kind": "capability" },
+    { "text": "스밈 참가자는 10분마다 자리를 이동합니다.", "kind": "numeric", "value": 10, "unit": "분", "bound": "exact" },
+    { "text": "스밈 각 소개팅 회차는 남성 10명, 여성 10명으로 구성됩니다.", "kind": "numeric", "value": 10, "unit": "명", "bound": "exact" },
     { "text": "스밈은 검증된 회원만 참여하는 로테이션 소개팅 서비스입니다.", "kind": "capability" },
     { "text": "스밈은 매주 금요일, 토요일, 일요일 서울에서 진행되며 참가비는 1인 50,000원입니다.", "kind": "numeric", "value": 50000, "unit": "KRW", "bound": "exact" },
     { "text": "스밈은 연봉 7천만원 이상인 분들로 소개팅 회차를 구성합니다.", "kind": "numeric", "value": 70000000, "unit": "KRW", "bound": "atLeast" },
