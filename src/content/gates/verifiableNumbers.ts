@@ -67,6 +67,24 @@ function isCjkLang(language: string): boolean {
 }
 
 /**
+ * CJK superlative false-positive guard (W1.7). A superlative term found by
+ * substring search may actually be a fragment of a DIFFERENT, non-superlative
+ * lexeme. We stay §7-conservative: only the clearly-non-superlative
+ * continuations below are excused; a genuine superlative claim (e.g. 완벽하게,
+ * 최고) still trips. Currently scoped to 최대, whose substring appears in:
+ *   - 최대한  ("as much as possible" — an adverb, not a brand claim)
+ *   - 최대 <number>  (a bounded quantifier, e.g. "최대 50%" — the NUMBER is still
+ *     verified by the numeric path; the bare word is not a superlative).
+ */
+function isCjkSuperlativeException(term: string, after: string): boolean {
+  if (term === "최대") {
+    if (after.startsWith("한")) return true; // 최대한
+    if (/^\s*\d/.test(after)) return true; // 최대 50% (bounded quantifier)
+  }
+  return false;
+}
+
+/**
  * Find all superlative hits in a body text for a given language.
  * Returns matched terms.
  */
@@ -79,11 +97,22 @@ function findSuperlativeHits(
   const hits: string[] = [];
 
   if (isCjk) {
-    // Substring search — no word boundaries in CJK
+    // Substring search — no word boundaries in CJK — but skip occurrences that
+    // are a known non-superlative continuation (W1.7).
     for (const term of superlatives) {
-      if (text.includes(term)) {
-        hits.push(term);
+      let from = 0;
+      let matched = false;
+      while (true) {
+        const pos = text.indexOf(term, from);
+        if (pos === -1) break;
+        const after = text.slice(pos + term.length);
+        if (!isCjkSuperlativeException(term, after)) {
+          matched = true;
+          break;
+        }
+        from = pos + 1;
       }
+      if (matched) hits.push(term);
     }
   } else {
     // Case-insensitive word-boundary search

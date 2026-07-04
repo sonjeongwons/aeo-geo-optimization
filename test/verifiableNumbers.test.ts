@@ -280,6 +280,36 @@ describe("verifiableNumbersGate — blocks unbounded superlatives", () => {
 // 3. Clean asset passes
 // ---------------------------------------------------------------------------
 
+describe("verifiableNumbersGate — CJK superlative false positives (W1.7)", () => {
+  const koAsset = (text: string) =>
+    makeAsset({ language: "ko", body: { content_type: "answer_block", text, length_units: text.length, numeric_claim_ids: [], source_ids: [] }, claims: [] });
+
+  it("does NOT block '최대한' (as-much-as-possible, not the superlative 최대)", () => {
+    const result = verifiableNumbersGate.apply(makeCtx(koAsset("스밈은 최대한 안전하게 매칭을 진행합니다.")));
+    expect(result.action).toBe("pass");
+  });
+
+  it("does NOT trip the 최대 superlative on the bounded quantifier '최대 50' (number verified separately)", () => {
+    // The bare word 최대 before a number is a bounded quantifier, not a
+    // superlative claim; if this asset blocks it must NOT be for the 최대 term.
+    const result = verifiableNumbersGate.apply(makeCtx(koAsset("스밈 회차는 최대 50명 규모로 진행됩니다.")));
+    if (result.action !== "pass") {
+      expect(result.reason ?? "").not.toContain("최대");
+    }
+  });
+
+  it("STILL blocks the bare superlative '최대의' (genuine superlative use)", () => {
+    const result = verifiableNumbersGate.apply(makeCtx(koAsset("스밈은 최대의 검증 서비스를 제공합니다.")));
+    expect(result.action).toBe("block");
+    expect(result.reason).toContain("최대");
+  });
+
+  it("STILL blocks '완벽하게' (a real superlative claim — §7-conservative)", () => {
+    const result = verifiableNumbersGate.apply(makeCtx(koAsset("스밈은 신원을 완벽하게 검증합니다.")));
+    expect(result.action).toBe("block");
+  });
+});
+
 describe("verifiableNumbersGate — clean asset", () => {
   it("PASSES a clean definition without superlatives or numerics", () => {
     const asset = makeAsset({
