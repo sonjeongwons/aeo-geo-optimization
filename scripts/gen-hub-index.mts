@@ -16,6 +16,7 @@ import { env } from "../src/config/env.js";
 import { getDb, closeDb } from "../src/db/kysely.js";
 import { closePool } from "../src/db/pool.js";
 import { PAGE_STYLE, renderRobots, renderRss, type RssItem } from "../src/deploy/connectors/render.js";
+import { indexNowKeyFile, submitIndexNow } from "../src/deploy/indexNow.js";
 import { promises as fs } from "node:fs";
 import path from "node:path";
 
@@ -242,6 +243,18 @@ ${sections}
   await fs.writeFile(path.join(OUT, "feed.xml"), feedXml, "utf8");
 
   console.log(`[hub-index] wrote linking index.html: ${seen.size} pages across ${byLang.size} language(s) + Organization JSON-LD + robots.txt + feed.xml (${feedItems.length} items)`);
+
+  // IndexNow (W9.2) — OFF unless INDEXNOW_KEY is set. When armed, write the key
+  // file to the hub root and SUBMIT the page URLs to Bing/IndexNow (submitted,
+  // NOT indexed — §7). Honest no-op otherwise.
+  const indexNowKey = process.env["INDEXNOW_KEY"];
+  if (indexNowKey) {
+    const kf = indexNowKeyFile(indexNowKey);
+    await fs.writeFile(path.join(OUT, kf.filename), kf.content, "utf8");
+    const urls = [...seen];
+    const res = await submitIndexNow({ hubBaseUrl: `${HUB}/`, urls }).catch((e) => ({ skipped: String(e) }));
+    console.log(`[hub-index] IndexNow: ${JSON.stringify(res)} (submitted for crawling, not indexed)`);
+  }
 }
 
 main()
