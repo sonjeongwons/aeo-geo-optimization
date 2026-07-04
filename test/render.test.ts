@@ -239,8 +239,35 @@ describe("render reader UX", () => {
   it("FAQ uses div.faq-list of details — never a dl wrapping details", () => {
     const html = renderPage(base(faqBody));
     expect(html).toContain('<div class="faq-list">');
-    expect(html).toContain('<details class="faq-item">');
     expect(html).not.toContain("<dl>");
+  });
+
+  it("FAQ items are open + carry a fragment id (passage anchoring/visibility)", () => {
+    const html = renderPage(base(faqBody));
+    // open so the answer passage is always in the visible DOM
+    expect(html).toMatch(/<details class="faq-item" id="q-[^"]+" open>/);
+    // the answer text is present statically
+    expect(html).toContain("An AI character chat platform.");
+  });
+
+  it("primary answer text + JSON-LD are in the static HTML (no client hydration)", () => {
+    // Static-render guard: a human/parser must see the answer without JS.
+    const html = renderPage(base(answerBody));
+    expect(html).toContain("infinite-memory");
+    expect(html).toContain('application/ld+json');
+    expect(html).not.toContain("<script src");
+  });
+});
+
+describe("render dateModified (W-freshness)", () => {
+  it("defaults dateModified to datePublished when unset", () => {
+    const ld = extractJsonLd(renderPage(base(answerBody)));
+    expect(ld.dateModified).toBe("2026-07-04T00:00:00.000Z");
+  });
+  it("uses a supplied dateModified in the JSON-LD (decoupled recency signal)", () => {
+    const ld = extractJsonLd(renderPage({ ...base(answerBody), dateModified: "2026-08-01T00:00:00.000Z" }));
+    expect(ld.dateModified).toBe("2026-08-01T00:00:00.000Z");
+    expect(ld.datePublished).toBe("2026-07-04T00:00:00.000Z");
   });
 });
 

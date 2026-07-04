@@ -65,6 +65,13 @@ export interface RenderInput {
   /** ISO-8601 datePublished string (stamped at publish time). */
   datePublished: string;
   /**
+   * Optional ISO-8601 dateModified — the last MATERIAL-change instant (decoupled
+   * from datePublished for recency-biased engines like Perplexity/Copilot).
+   * Defaults to datePublished when unset. §7: callers must only advance this on a
+   * genuine content change, never a time-triggered restamp (manufactured freshness).
+   */
+  dateModified?: string;
+  /**
    * Optional brand identity for entity-disambiguation markup (AEO/GEO): drives
    * the Organization publisher/about in the auto-derived JSON-LD and a visible
    * "About <brand>" blurb linking the official site (sameAs). Omit for a
@@ -389,7 +396,7 @@ function deriveJsonLd(body: ContentBody, input: RenderInput): JsonLd | undefined
     inLanguage: input.language,
     url: input.canonicalUrl,
     datePublished: input.datePublished,
-    dateModified: input.datePublished,
+    dateModified: input.dateModified ?? input.datePublished,
     isPartOf,
     ...(org ? { publisher: org, author: org } : {}),
     // W4.2 schema.org citation — the verified sources behind the page's claims.
@@ -606,11 +613,24 @@ function renderAnswerBlock(body: AnswerBlockBody, input: RenderInput): string {
   }));
 }
 
+/** Deterministic URL-fragment slug for passage-level anchoring (ASCII + CJK). */
+function anchorSlug(text: string, i: number): string {
+  const s = text
+    .toLowerCase()
+    .replace(/[^\p{L}\p{N}]+/gu, "-")
+    .replace(/^-+|-+$/g, "")
+    .slice(0, 48);
+  return s.length > 0 ? `q-${s}` : `q-${i + 1}`;
+}
+
 function renderFaq(body: FaqBody, input: RenderInput): string {
   const rows = body.rows
     .map(
-      (row) =>
-        `        <details class="faq-item">\n          <summary>${esc(row.q)}</summary>\n          <p>${esc(row.a)}</p>\n        </details>`
+      (row, i) =>
+        // `open` so the answer passage is always visible (passage retrieval keys
+        // off statically-rendered visible text); a fragment id per Q enables
+        // passage-level deep links (fan-out sub-query targeting).
+        `        <details class="faq-item" id="${esc(anchorSlug(row.q, i))}" open>\n          <summary>${esc(row.q)}</summary>\n          <p>${esc(row.a)}</p>\n        </details>`
     )
     .join("\n");
 
