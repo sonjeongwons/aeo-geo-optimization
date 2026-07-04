@@ -29,8 +29,23 @@ function bodyToMarkdown(b: any): { title: string; md: string } {
   switch (b?.content_type) {
     case "definition":
       return { title: String(b.text).slice(0, 70), md: String(b.text) };
-    case "answer_block":
-      return { title: String(b.text).split(/[.。!?]/)[0].slice(0, 70), md: String(b.text) };
+    case "answer_block": {
+      // Guard: a miscategorised comparison can arrive as answer_block with raw
+      // markdown-table markup. Strip pipe-table lines so "| --- |" never becomes
+      // the page title or leaks into the .md twin verbatim (roadmap W5.1).
+      const prose = String(b.text)
+        .split(/\r?\n/)
+        .filter((l: string) => {
+          const t = l.trim();
+          if (!t.startsWith("|")) return true;
+          if (/^\|[\s:|-]+\|?$/.test(t)) return false;
+          return (t.match(/\|/g)?.length ?? 0) < 2;
+        })
+        .join("\n")
+        .trim();
+      const clean = prose.length > 0 ? prose : String(b.text);
+      return { title: clean.split(/[.。!?]/)[0]!.slice(0, 70), md: clean };
+    }
     case "faq":
       return {
         title: "FAQ",

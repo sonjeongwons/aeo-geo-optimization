@@ -230,17 +230,32 @@ describe("renderPage — JSON-LD embedded as <script type=application/ld+json>",
     expect(html).toContain('"EMORA"');
   });
 
-  it("auto-derives an Article JSON-LD block when jsonLd is absent (AEO structured data)", () => {
+  it("auto-derives a DefinedTerm JSON-LD block for a definition when jsonLd is absent (AEO structured data)", () => {
     const body: ContentBody = {
       content_type: "definition",
       text: "EMORA is an AI platform.",
       meaning_key: "emora-def",
     };
     const input = makeInput(body);
-    // No explicit jsonLd → renderer derives schema.org Article from the body so
-    // every page carries structured data (the #1 AEO/GEO citation lever).
+    // No explicit jsonLd → renderer derives schema.org structured data from the
+    // body so every page carries it (the #1 AEO/GEO citation lever). A definition
+    // maps to DefinedTerm (W4.3), not Article.
     const html = renderPage(input);
     expect(html).toContain('"application/ld+json"');
+    expect(html).toContain('"DefinedTerm"');
+    expect(html).toContain('"description"');
+    expect(html).toContain('"inLanguage"');
+  });
+
+  it("auto-derives an Article JSON-LD block for an answer_block when jsonLd is absent", () => {
+    const body: ContentBody = {
+      content_type: "answer_block",
+      text: "EMORA is an AI character chat platform with an infinite-memory system.",
+      length_units: 12,
+      numeric_claim_ids: [],
+      source_ids: [],
+    };
+    const html = renderPage(makeInput(body));
     expect(html).toContain('"Article"');
     expect(html).toContain('"articleBody"');
     expect(html).toContain('"inLanguage"');

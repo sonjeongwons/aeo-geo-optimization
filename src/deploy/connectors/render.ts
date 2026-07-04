@@ -10,6 +10,22 @@
  * - Supports all ContentBody content_type values:
  *     definition, answer_block, faq, comparison, case_study, jsonld
  *
+ * AEO/GEO quality overhaul (roadmap W4/W5/W9):
+ * - Every page ships a small, deterministic, CJK-aware stylesheet + dark mode +
+ *   responsive viewport (W5.2) so a human landing from an AI citation sees a
+ *   credible, readable page (trust is itself an AEO signal).
+ * - A visible brand/home link at the top of every page (W5.5).
+ * - Valid FAQ markup — a <div class="faq-list"> of <details>, never a <dl>
+ *   wrapping <details> (W5.5).
+ * - A SHORT, distinct <h1>/<title>/headline derived by word-boundary truncation
+ *   from the body — never the full multi-sentence block (W5.4).
+ * - A pipe-table guard: markdown-table markup ("| --- |") never leaks into the
+ *   h1/title/meta/JSON-LD of a miscategorised answer_block (W5.1).
+ * - Auto-derived JSON-LD covers DefinedTerm (definition), Article (prose),
+ *   FAQPage (faq) with an author Organization node and case_study before/after
+ *   metrics folded into articleBody (W4.3/W4.4).
+ * - renderRobots() emits a citation-bot-friendly robots.txt (W9.1).
+ *
  * DESIGN-phase3.md §"Owned-Net (real today)" step 3.
  * SPEC §7#6 disclosure, §8 owned_net.
  *
@@ -99,6 +115,99 @@ function sortedReplacer(_key: string, value: unknown): unknown {
 }
 
 // ---------------------------------------------------------------------------
+// Text-shaping helpers — short headlines, pipe-table guard (W5.1/W5.4)
+// ---------------------------------------------------------------------------
+
+/** True when a line is a markdown table row / delimiter ("| a | b |", "|---|"). */
+function isPipeTableLine(line: string): boolean {
+  const t = line.trim();
+  if (!t.startsWith("|")) return false;
+  // A delimiter row (---) or any row carrying >=2 pipes is table markup.
+  if (/^\|[\s:|-]+\|?$/.test(t)) return true;
+  return (t.match(/\|/g)?.length ?? 0) >= 2;
+}
+
+/**
+ * Strip markdown-table lines from prose so pipe markup never lands in an
+ * h1/title/meta/JSON-LD field (W5.1). Non-table prose is preserved verbatim.
+ */
+function stripPipeTables(text: string): string {
+  return text
+    .split(/\r?\n/)
+    .filter((l) => !isPipeTableLine(l))
+    .join("\n")
+    .replace(/[ \t]+/g, " ")
+    .replace(/\n{2,}/g, "\n")
+    .trim();
+}
+
+/** First sentence of a block (up to a Latin or CJK terminator), else the whole. */
+function firstSentence(text: string): string {
+  const m = text.match(/^[\s\S]*?[.。!?！？](?=\s|$)/);
+  const s = (m ? m[0] : text).trim();
+  return s.length > 0 ? s : text.trim();
+}
+
+/**
+ * Truncate to at most `max` visible units without cutting mid-word for
+ * space-delimited scripts. CJK (no spaces) truncates at the character boundary.
+ * Appends an ellipsis only when truncation actually happened.
+ */
+function truncateAtBoundary(text: string, max: number): string {
+  const t = text.trim();
+  if (t.length <= max) return t;
+  const slice = t.slice(0, max);
+  // If the source uses spaces, prefer the last word boundary; otherwise (CJK)
+  // the raw character slice is already a clean boundary.
+  const lastSpace = slice.lastIndexOf(" ");
+  const cut = lastSpace > max * 0.6 ? slice.slice(0, lastSpace) : slice;
+  return cut.replace(/[\s,;:।、，；：]+$/, "") + "…";
+}
+
+/** Derive a short, pipe-free headline (for h1/title/JSON-LD headline). */
+function headlineOf(text: string, max = 70): string {
+  return truncateAtBoundary(firstSentence(stripPipeTables(text)), max);
+}
+
+// ---------------------------------------------------------------------------
+// Deterministic page stylesheet (W5.2) — constant string for byte-stability.
+// System + CJK font stack, readable column, table borders, dark mode, mobile.
+// ---------------------------------------------------------------------------
+
+const PAGE_STYLE =
+  ":root{color-scheme:light dark}" +
+  "*{box-sizing:border-box}html{-webkit-text-size-adjust:100%}" +
+  'body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,' +
+  '"Helvetica Neue","Noto Sans KR","Apple SD Gothic Neo","Malgun Gothic",' +
+  '"Noto Sans JP","Hiragino Kaku Gothic ProN","Noto Sans SC",sans-serif;' +
+  "line-height:1.7;color:#1a1a1a;background:#fff}" +
+  "header.site{max-width:720px;margin:0 auto;padding:1rem 1.25rem 0}" +
+  "header.site a{color:#0b5fff;text-decoration:none;font-weight:600}" +
+  "main{max-width:720px;margin:0 auto;padding:1rem 1.25rem}" +
+  "h1{font-size:1.6rem;line-height:1.3;margin:.4rem 0 1rem}" +
+  "h2{font-size:1.2rem;line-height:1.35;margin:1.8rem 0 .6rem}" +
+  "p{margin:0 0 1rem}article>p{font-size:1.07rem}a{color:#0b5fff}" +
+  "table{border-collapse:collapse;width:100%;margin:1rem 0;font-size:.95rem}" +
+  "th,td{border:1px solid #d0d7de;padding:.5rem .7rem;text-align:left;vertical-align:top}" +
+  "th{background:#f6f8fa;font-weight:600}" +
+  "div.faq-list{margin:1rem 0}" +
+  "details.faq-item{border:1px solid #d0d7de;border-radius:6px;padding:.2rem .8rem;margin:.5rem 0}" +
+  "details.faq-item summary{cursor:pointer;font-weight:600;padding:.5rem 0}" +
+  "aside.about{background:#f6f8fa;border-left:3px solid #0b5fff;padding:.7rem 1rem;" +
+  "margin:1.6rem 0;font-size:.95rem;border-radius:0 6px 6px 0}" +
+  "aside.disclosure{color:#57606a;font-size:.85rem;margin:0 0 1rem}" +
+  "nav.related{margin:2rem 0 0;border-top:1px solid #d0d7de;padding-top:1rem}" +
+  "nav.related h2{font-size:1rem;margin:.2rem 0 .5rem}" +
+  "nav.related ul{margin:0;padding-left:1.1rem}nav.related li{margin:.3rem 0}" +
+  "footer{max-width:720px;margin:2rem auto 0;padding:1rem 1.25rem 2rem;" +
+  "border-top:1px solid #d0d7de;color:#57606a;font-size:.85rem}" +
+  "@media(prefers-color-scheme:dark){body{background:#0d1117;color:#e6edf3}" +
+  "th{background:#161b22}aside.about,details.faq-item{background:#161b22;border-color:#30363d}" +
+  "th,td{border-color:#30363d}a,header.site a{color:#4c9aff}" +
+  "nav.related,footer{border-color:#30363d}}" +
+  "@media(max-width:480px){main{padding:1rem}h1{font-size:1.38rem}}";
+
+// ---------------------------------------------------------------------------
 // Disclosure banner (§7#6)
 // ---------------------------------------------------------------------------
 
@@ -120,6 +229,8 @@ function htmlPage(opts: {
   jsonLd?: JsonLd;
   disclosureTag: string | null;
   description?: string;
+  /** Visible top-of-page brand/home link (W5.5). */
+  home: { url: string; label: string };
 }): string {
   const jsonLdBlock = opts.jsonLd
     ? `\n  <script type="application/ld+json">\n${serializeJsonLd(opts.jsonLd)}\n  </script>`
@@ -143,15 +254,20 @@ function htmlPage(opts: {
   <link rel="canonical" href="${esc(opts.canonical)}">
   <link rel="alternate" type="text/markdown" href="${esc(opts.canonical.endsWith("/") ? opts.canonical + "index.md" : opts.canonical + ".md")}">
   <meta name="date" content="${esc(iso)}">
-  <meta name="last-modified" content="${esc(iso)}">${opts.description ? `\n  <meta name="description" content="${esc(opts.description)}">` : ""}${jsonLdBlock}
+  <meta name="last-modified" content="${esc(iso)}">${opts.description ? `\n  <meta name="description" content="${esc(opts.description)}">` : ""}
+  <meta property="og:type" content="article">
+  <meta property="og:title" content="${esc(opts.title)}">${opts.description ? `\n  <meta property="og:description" content="${esc(opts.description)}">` : ""}
+  <meta property="og:url" content="${esc(opts.canonical)}">
+  <style>${PAGE_STYLE}</style>${jsonLdBlock}
   <title>${esc(opts.title)}</title>
 </head>
 <body>
+  <header class="site"><a href="${esc(opts.home.url)}" rel="home">${esc(opts.home.label)}</a></header>
   <main>${disclosure}
 ${opts.main}
   </main>
   <footer>
-    <p><time datetime="${esc(iso)}">Last updated: ${ymd}</time></p>
+    <p><a href="${esc(opts.home.url)}" rel="home">${esc(opts.home.label)}</a> · <time datetime="${esc(iso)}">Last updated: ${ymd}</time></p>
   </footer>
 </body>
 </html>`;
@@ -174,12 +290,18 @@ function buildPageOpts(opts: {
   jsonLd: JsonLd | undefined;
   disclosureTag: string | null;
   description?: string;
+  home: { url: string; label: string };
 }): Parameters<typeof htmlPage>[0] {
   const { jsonLd, ...rest } = opts;
   if (jsonLd !== undefined) {
     return { ...rest, jsonLd };
   }
   return rest;
+}
+
+/** The top-of-page brand/home link target + label for an input. */
+function homeOf(input: RenderInput): { url: string; label: string } {
+  return { url: websiteBase(input.canonicalUrl), label: input.brand?.name ?? "Home" };
 }
 
 // ---------------------------------------------------------------------------
@@ -210,11 +332,16 @@ function brandOrg(brand: NonNullable<RenderInput["brand"]>): Record<string, unkn
 
 /**
  * Auto-derive schema.org JSON-LD from the body so EVERY page carries structured
- * data (the #1 AEO/GEO citation lever). faq → FAQPage; everything else → Article.
+ * data (the #1 AEO/GEO citation lever). Mapping:
+ *   faq        → FAQPage (mainEntity Q/A)
+ *   definition → DefinedTerm (name + description)   (W4.3)
+ *   others     → Article (headline + articleBody)
  * inLanguage + datePublished/dateModified + url + isPartOf WebSite are always set;
- * publisher/about Organization when a brand is supplied. jsonld pages already
- * carry their own JSON-LD, so they are skipped. Deterministic (no clock/random;
- * htmlPage serializes with sorted keys).
+ * publisher + author + about Organization when a brand is supplied (W4.3). jsonld
+ * pages already carry their own JSON-LD, so they are skipped. case_study before/
+ * after metrics are folded into articleBody so the most citable numbers survive
+ * into structured data (W4.4). Deterministic (no clock/random; htmlPage
+ * serializes with sorted keys).
  */
 function deriveJsonLd(body: ContentBody, input: RenderInput): JsonLd | undefined {
   if (body.content_type === "jsonld") return undefined;
@@ -222,17 +349,20 @@ function deriveJsonLd(body: ContentBody, input: RenderInput): JsonLd | undefined
   const brand = input.brand;
   const org = brand ? brandOrg(brand) : undefined;
   const isPartOf = { "@type": "WebSite", url: hub, ...(brand ? { name: brand.name } : {}) };
+  const common = {
+    "@context": "https://schema.org",
+    inLanguage: input.language,
+    url: input.canonicalUrl,
+    datePublished: input.datePublished,
+    dateModified: input.datePublished,
+    isPartOf,
+    ...(org ? { publisher: org, author: org } : {}),
+  };
 
   if (body.content_type === "faq") {
     return {
-      "@context": "https://schema.org",
+      ...common,
       "@type": "FAQPage",
-      inLanguage: input.language,
-      url: input.canonicalUrl,
-      datePublished: input.datePublished,
-      dateModified: input.datePublished,
-      isPartOf,
-      ...(org ? { publisher: org } : {}),
       mainEntity: body.rows.map((r) => ({
         "@type": "Question",
         name: r.q,
@@ -241,45 +371,67 @@ function deriveJsonLd(body: ContentBody, input: RenderInput): JsonLd | undefined
     } as unknown as JsonLd;
   }
 
-  let headline = "";
+  if (body.content_type === "definition") {
+    // A definition is a DefinedTerm, not an Article (W4.3).
+    return {
+      ...common,
+      "@type": "DefinedTerm",
+      name: headlineOf(body.text, 90),
+      description: stripPipeTables(body.text),
+      ...(org ? { inDefinedTermSet: { "@type": "DefinedTermSet", name: brand!.name, url: hub } } : {}),
+    } as unknown as JsonLd;
+  }
+
   let articleBody = "";
   switch (body.content_type) {
-    case "definition":
     case "answer_block":
-      headline = body.text;
-      articleBody = body.text;
+      articleBody = stripPipeTables(body.text);
       break;
     case "comparison":
-      headline = body.columns[0] ?? "Comparison";
       articleBody = body.rows
         .map((r) => `${r.entity}: ${r.cells.map((c) => c.value).join(", ")}`)
         .join(". ");
       break;
-    case "case_study":
-      headline = body.situation;
-      articleBody = [body.situation, body.action, body.result].join(" ");
+    case "case_study": {
+      // Fold the before/after metrics into articleBody so the most citable
+      // numbers survive into structured data (W4.4).
+      const metricsText = body.metrics
+        .map((m) => `${m.label}: ${m.before} → ${m.after}`)
+        .join("; ");
+      articleBody = [body.situation, body.action, body.result, metricsText]
+        .filter((s) => s && s.trim().length > 0)
+        .join(" ");
       break;
+    }
   }
+  const headline =
+    body.content_type === "comparison"
+      ? (body.columns.length > 0 ? body.columns.join(" vs ") : "Comparison")
+      : body.content_type === "case_study"
+        ? headlineOf(body.situation, 110)
+        : headlineOf(body.text, 110);
   return {
-    "@context": "https://schema.org",
+    ...common,
     "@type": "Article",
-    headline: headline.slice(0, 110),
+    headline,
     articleBody,
-    inLanguage: input.language,
-    url: input.canonicalUrl,
-    datePublished: input.datePublished,
-    dateModified: input.datePublished,
-    isPartOf,
-    ...(org ? { publisher: org, about: { "@type": "Organization", name: brand!.name } } : {}),
+    ...(org ? { about: { "@type": "Organization", name: brand!.name } } : {}),
   } as unknown as JsonLd;
 }
 
 /** Visible "About <brand>" entity blurb linking the official site (sameAs echo). */
-function aboutBrandHtml(brand: RenderInput["brand"]): string {
+function aboutBrandHtml(brand: RenderInput["brand"], lang: string): string {
   if (!brand) return "";
-  const desc = brand.description ? ` — ${esc(brand.description)}` : "";
+  const l2 = lang.split("-")[0]?.toLowerCase() ?? "en";
+  const officialLabel =
+    l2 === "ko" ? "공식 사이트" : l2 === "ja" ? "公式サイト" : l2 === "zh" ? "官方网站" : "Official site";
+  // End the description with a full stop before the label so CJK prose doesn't
+  // run into it (expressiveness/readability).
+  const rawDesc = brand.description ? brand.description.trim() : "";
+  const descPunct = /[.。!?！？]$/.test(rawDesc) ? "" : l2 === "ko" || l2 === "ja" || l2 === "zh" ? "." : ".";
+  const desc = rawDesc ? ` — ${esc(rawDesc)}${descPunct}` : "";
   const link = brand.url
-    ? ` Official site: <a href="${esc(brand.url)}">${esc(brand.url)}</a>.`
+    ? ` ${officialLabel}: <a href="${esc(brand.url)}">${esc(brand.url)}</a>`
     : "";
   return `\n      <aside class="about"><p><strong>${esc(brand.name)}</strong>${desc}${link}</p></aside>`;
 }
@@ -303,41 +455,82 @@ function relatedLinksHtml(links: RenderInput["relatedLinks"], lang: string): str
 function composeArticle(cls: string, h1: string, innerHtml: string, input: RenderInput): string {
   return `    <article class="${cls}">
       <h1>${esc(h1)}</h1>
-${innerHtml}${aboutBrandHtml(input.brand)}${relatedLinksHtml(input.relatedLinks, input.language)}
+${innerHtml}${aboutBrandHtml(input.brand, input.language)}${relatedLinksHtml(input.relatedLinks, input.language)}
     </article>`;
 }
 
-/** First-sentence-ish meta description, bounded to ~160 chars for SERP/AEO. */
+/** First-sentence-ish meta description, pipe-free, bounded to ~160 chars for SERP/AEO. */
 function metaDescription(text: string): string {
-  const t = text.trim().replace(/\s+/g, " ");
+  const t = stripPipeTables(text).replace(/\s+/g, " ").trim();
   return t.length <= 160 ? t : t.slice(0, 157).trimEnd() + "…";
 }
 
+/**
+ * Render prose that MAY contain a stray markdown table (a miscategorised
+ * comparison stored as answer_block, W5.1). Non-table lines become <p>; a run
+ * of pipe-table lines is parsed into a real <table> so nothing leaks raw
+ * "| --- |" markup to the reader.
+ */
+function renderProse(text: string): string {
+  const lines = text.split(/\r?\n/);
+  const out: string[] = [];
+  let table: string[] = [];
+  const flushTable = (): void => {
+    if (table.length === 0) return;
+    const rows = table
+      .filter((l) => !/^\|[\s:|-]+\|?$/.test(l.trim())) // drop the --- delimiter row
+      .map((l) => l.trim().replace(/^\|/, "").replace(/\|$/, "").split("|").map((c) => c.trim()));
+    if (rows.length > 0) {
+      const body = rows
+        .map((cells) => `        <tr>${cells.map((c) => `<td>${esc(c)}</td>`).join("")}</tr>`)
+        .join("\n");
+      out.push(`      <table>\n${body}\n      </table>`);
+    }
+    table = [];
+  };
+  for (const raw of lines) {
+    if (isPipeTableLine(raw)) {
+      table.push(raw);
+      continue;
+    }
+    flushTable();
+    const t = raw.trim();
+    if (t.length > 0) out.push(`      <p>${esc(t)}</p>`);
+  }
+  flushTable();
+  return out.length > 0 ? out.join("\n") : `      <p>${esc(text)}</p>`;
+}
+
 function renderDefinition(body: DefinitionSentenceBody, input: RenderInput): string {
-  const main = composeArticle("definition", body.text, `      <p>${esc(body.text)}</p>`, input);
+  const h1 = headlineOf(body.text);
+  const main = composeArticle("definition", h1, `      <p>${esc(stripPipeTables(body.text))}</p>`, input);
   return htmlPage(buildPageOpts({
     lang: input.language,
     canonical: input.canonicalUrl,
     datePublished: input.datePublished,
-    title: esc(body.text).slice(0, 60),
+    title: h1,
     main,
     jsonLd: input.jsonLd ?? deriveJsonLd(body, input),
     disclosureTag: input.disclosureTag,
     description: metaDescription(body.text),
+    home: homeOf(input),
   }));
 }
 
 function renderAnswerBlock(body: AnswerBlockBody, input: RenderInput): string {
-  const main = composeArticle("answer-block", body.text, `      <p>${esc(body.text)}</p>`, input);
+  // Short, distinct h1 (W5.4) — never the full multi-sentence block; pipe-free (W5.1).
+  const h1 = headlineOf(body.text);
+  const main = composeArticle("answer-block", h1, renderProse(body.text), input);
   return htmlPage(buildPageOpts({
     lang: input.language,
     canonical: input.canonicalUrl,
     datePublished: input.datePublished,
-    title: esc(body.text).slice(0, 60),
+    title: h1,
     main,
     jsonLd: input.jsonLd ?? deriveJsonLd(body, input),
     disclosureTag: input.disclosureTag,
     description: metaDescription(body.text),
+    home: homeOf(input),
   }));
 }
 
@@ -345,14 +538,15 @@ function renderFaq(body: FaqBody, input: RenderInput): string {
   const rows = body.rows
     .map(
       (row) =>
-        `      <details class="faq-item">\n        <summary>${esc(row.q)}</summary>\n        <p>${esc(row.a)}</p>\n      </details>`
+        `        <details class="faq-item">\n          <summary>${esc(row.q)}</summary>\n          <p>${esc(row.a)}</p>\n        </details>`
     )
     .join("\n");
 
-  const h1 = body.rows[0] != null ? body.rows[0].q : "FAQ";
-  const main = composeArticle("faq", h1, `      <dl>\n${rows}\n      </dl>`, input);
+  const h1 = body.rows[0] != null ? headlineOf(body.rows[0].q, 90) : "FAQ";
+  // Valid markup: a <div class="faq-list"> of <details>, NOT a <dl> (W5.5).
+  const main = composeArticle("faq", h1, `      <div class="faq-list">\n${rows}\n      </div>`, input);
 
-  const title = body.rows[0] != null ? esc(body.rows[0].q).slice(0, 60) : "FAQ";
+  const title = h1;
   const desc = body.rows[0] != null ? metaDescription(`${body.rows[0].q} ${body.rows[0].a}`) : "FAQ";
 
   return htmlPage(buildPageOpts({
@@ -364,6 +558,7 @@ function renderFaq(body: FaqBody, input: RenderInput): string {
     jsonLd: input.jsonLd ?? deriveJsonLd(body, input),
     disclosureTag: input.disclosureTag,
     description: desc,
+    home: homeOf(input),
   }));
 }
 
@@ -394,10 +589,7 @@ ${dataRows}
   const h1 = body.columns.length > 0 ? body.columns.join(" vs ") : "Comparison";
   const main = composeArticle("comparison", h1, tableHtml, input);
 
-  const title =
-    body.columns.length > 0
-      ? esc(body.columns[0]!).slice(0, 60)
-      : "Comparison";
+  const title = truncateAtBoundary(h1, 70);
 
   return htmlPage(buildPageOpts({
     lang: input.language,
@@ -408,6 +600,7 @@ ${dataRows}
     jsonLd: input.jsonLd ?? deriveJsonLd(body, input),
     disclosureTag: input.disclosureTag,
     description: metaDescription(h1),
+    home: homeOf(input),
   }));
 }
 
@@ -432,9 +625,10 @@ ${metrics}
   const inner = `      <section class="situation"><h2>Situation</h2><p>${esc(body.situation)}</p></section>
       <section class="action"><h2>Action</h2><p>${esc(body.action)}</p></section>
       <section class="result"><h2>Result</h2><p>${esc(body.result)}</p></section>${metricsTable}`;
-  const main = composeArticle("case-study", body.situation, inner, input);
+  const h1 = headlineOf(body.situation);
+  const main = composeArticle("case-study", h1, inner, input);
 
-  const title = esc(body.situation).slice(0, 60);
+  const title = h1;
 
   return htmlPage(buildPageOpts({
     lang: input.language,
@@ -445,6 +639,7 @@ ${metrics}
     jsonLd: input.jsonLd ?? deriveJsonLd(body, input),
     disclosureTag: input.disclosureTag,
     description: metaDescription([body.situation, body.action, body.result].join(" ")),
+    home: homeOf(input),
   }));
 }
 
@@ -456,6 +651,7 @@ function renderJsonLdPage(body: JsonLdBody, input: RenderInput): string {
   const title = `${schemaType} — Structured Data`;
 
   const main = `    <article class="jsonld-page">
+      <h1>${esc(schemaType)}</h1>
       <p>Structured data: ${esc(schemaType)}</p>
     </article>`;
 
@@ -470,6 +666,7 @@ function renderJsonLdPage(body: JsonLdBody, input: RenderInput): string {
     main,
     jsonLd: resolvedJsonLd,
     disclosureTag: input.disclosureTag,
+    home: homeOf(input),
   }));
 }
 
@@ -503,6 +700,49 @@ export function renderSitemap(entries: SitemapEntry[]): string {
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
 ${urls}
 </urlset>`;
+}
+
+// ---------------------------------------------------------------------------
+// renderRobots — citation-bot-friendly robots.txt (W9.1)
+// ---------------------------------------------------------------------------
+
+/**
+ * AI answer-engine crawlers we explicitly welcome. Allowing these is the
+ * cheapest real discovery lever: they are the bots that fetch pages to cite in
+ * ChatGPT-search / Perplexity / Gemini / Claude / Google AI answers. We do NOT
+ * block the general web (`User-agent: *` stays Allow) — an owned hub exists to
+ * be crawled.
+ */
+export const ANSWER_ENGINE_BOTS: readonly string[] = [
+  "GPTBot",
+  "OAI-SearchBot",
+  "ChatGPT-User",
+  "PerplexityBot",
+  "Perplexity-User",
+  "ClaudeBot",
+  "Claude-SearchBot",
+  "Claude-User",
+  "Google-Extended",
+  "Applebot-Extended",
+  "Amazonbot",
+  "Bingbot",
+  "CCBot",
+];
+
+/**
+ * Render a deterministic robots.txt for an owned hub. Explicitly Allows every
+ * citation bot, keeps a permissive default, and advertises the sitemap.
+ * PURE — same inputs → byte-identical output.
+ *
+ * @param opts.sitemapUrl  Absolute sitemap URL to advertise (optional).
+ */
+export function renderRobots(opts: { sitemapUrl?: string }): string {
+  const perBot = ANSWER_ENGINE_BOTS
+    .map((ua) => `User-agent: ${ua}\nAllow: /`)
+    .join("\n\n");
+  const wildcard = `User-agent: *\nAllow: /`;
+  const sitemap = opts.sitemapUrl ? `\n\nSitemap: ${opts.sitemapUrl}` : "";
+  return `# robots.txt — AI answer-engine citation crawlers explicitly welcomed\n${perBot}\n\n${wildcard}${sitemap}\n`;
 }
 
 // ---------------------------------------------------------------------------
