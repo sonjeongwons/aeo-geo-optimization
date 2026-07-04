@@ -222,6 +222,22 @@ ${sections}
   // cheapest real discovery lever for ChatGPT-search / Perplexity / Gemini.
   await fs.writeFile(path.join(OUT, "robots.txt"), renderRobots({ sitemapUrl: `${HUB}/sitemap.xml` }), "utf8");
 
+  // Search Console / Webmaster ownership-verification files — durably re-emitted
+  // on every rebuild (a loose file would be dropped by a clean regen). Both are
+  // OFF unless the corresponding env is set; the values are public verification
+  // tokens (no secret). GSC_VERIFICATION_FILE = the "googleXXentity.html" filename;
+  // BING_SITE_AUTH = the Bing verification code.
+  const gscFile = process.env["GSC_VERIFICATION_FILE"];
+  if (gscFile && /^google[a-z0-9]+\.html$/.test(gscFile)) {
+    await fs.writeFile(path.join(OUT, gscFile), `google-site-verification: ${gscFile}`, "utf8");
+    console.log(`[hub-index] wrote GSC verification ${gscFile}`);
+  }
+  const bingAuth = process.env["BING_SITE_AUTH"];
+  if (bingAuth && /^[A-Za-z0-9]+$/.test(bingAuth)) {
+    await fs.writeFile(path.join(OUT, "BingSiteAuth.xml"), `<?xml version="1.0"?>\n<users>\n  <user>${bingAuth}</user>\n</users>\n`, "utf8");
+    console.log(`[hub-index] wrote BingSiteAuth.xml`);
+  }
+
   // Emit an RSS 2.0 feed (W9.3) — a freshness discovery lever (Perplexity). Built
   // from DB rows carrying a real published_at; newest-first inside renderRss.
   const feedItems: RssItem[] = [];

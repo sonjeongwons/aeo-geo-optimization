@@ -41,6 +41,10 @@ jobs:
       MAIL_USERNAME: ${{ secrets.MAIL_USERNAME }}
       MAIL_PASSWORD: ${{ secrets.MAIL_PASSWORD }}
       REPORT_TO: doradola38@gmail.com
+      # Search Console ownership-verification file (public token) — durably
+      # re-emitted to each hub root by gen-hub-index so GSC verification survives
+      # rebuilds. Bing: set BING_SITE_AUTH once the owner provides the code.
+      GSC_VERIFICATION_FILE: google871e8ec1d063f81f.html
     steps:
       - name: Guard — require secrets (skip gracefully until armed)
         id: guard
