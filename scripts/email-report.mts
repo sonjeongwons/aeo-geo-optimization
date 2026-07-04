@@ -243,7 +243,10 @@ async function main(): Promise<void> {
 </body></html>`;
 
   await fs.writeFile("report-email.html", html, "utf8");
-  await fs.writeFile("report-subject.txt", subject, "utf8");
+  // Trailing newline REQUIRED: the CI heredoc `cat report-subject.txt; echo "__EOF__"`
+  // needs the subject on its own line, else __EOF__ concatenates onto it and the
+  // GITHUB_ENV multiline delimiter is "not found" (the email step fails).
+  await fs.writeFile("report-subject.txt", subject + "\n", "utf8");
   console.log(`[email-report] wrote report-email.html + report-subject.txt (to=${REPORT_TO})`);
   console.log(`[email-report] subject: ${subject}`);
 
