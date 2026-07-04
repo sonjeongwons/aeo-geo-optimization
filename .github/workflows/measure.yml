@@ -68,6 +68,12 @@ jobs:
         run: npm run migrate
       - name: Run measurement cycle (each customer, sequential — shared Gemini budget)
         if: steps.guard.outputs.armed == 'true' && github.event.inputs.report_only != 'true'
+        # The free-tier Gemini key rate-limits hard, so a full cycle can exceed the
+        # job timeout. Bound this step and continue-on-error so the email report
+        # ALWAYS builds + sends from whatever data exists (the weekly cron used to
+        # hit the 120-min job timeout and never reach the email step).
+        timeout-minutes: 75
+        continue-on-error: true
         run: |
           for c in $CUSTOMERS; do
             echo "::group::measure $c"
