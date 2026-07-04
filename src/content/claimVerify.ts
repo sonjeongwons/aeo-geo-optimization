@@ -677,6 +677,21 @@ function extractTextForBackstop(body: unknown): string {
  * @param extractionFailed  True when claimExtract returned ok:false.
  * @returns VerifyResult — never throws.
  */
+/**
+ * A claim is trustworthy-bound ONLY when it resolved to a source AND was
+ * verified. Since W1.1 persists `resolved_source_id` even on `needs_human` and
+ * `rejected` claims (previously discarded), a `resolved_source_id !== null`
+ * check alone no longer implies "safe to surface" on a re-gate. The cheap
+ * structural gates currently rely on `resolved_source_id !== null` and are
+ * §7-safe ONLY because claimVerificationGate runs LAST and re-derives the
+ * terminal verdict every fold. When W1.2 reorders/relaxes that ordering, those
+ * gates MUST switch their "covered" predicate to this helper so honesty does
+ * not depend on gate order (adversarial-review W1.1 P2).
+ */
+export function isClaimVerified(claim: ClaimRecord): boolean {
+  return claim.resolved_source_id !== null && claim.verification === "verified";
+}
+
 export function verifyAndDecide(opts: {
   body: unknown;
   language: string;
@@ -731,7 +746,7 @@ export function verifyAndDecide(opts: {
   if (extractionFailed && backstopHits.length > 0) {
     return {
       decision: "needs_human",
-      claims,
+      claims: [...claims],
       verdicts: claims.map((c) => ({
         claim_id: c.claim_id,
         claim: c,
@@ -747,7 +762,7 @@ export function verifyAndDecide(opts: {
   if (claims.length === 0 && backstopHits.length === 0) {
     return {
       decision: "pass",
-      claims,
+      claims: [...claims],
       verdicts: [],
       backstopHits: [],
     };
@@ -759,7 +774,7 @@ export function verifyAndDecide(opts: {
   if (claims.length === 0 && backstopHits.length > 0) {
     return {
       decision: "needs_human",
-      claims,
+      claims: [...claims],
       verdicts: [],
       backstopHits,
       reason: `No extracted claims but backstop detected ${backstopHits.length} span(s) — fail closed`,

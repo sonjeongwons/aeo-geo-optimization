@@ -233,6 +233,11 @@ export const verifiableNumbersGate = {
       // A superlative is "covered" if ANY claim in claims[] has resolved_source_id != null
       // AND its claim_text contains (or is contained by) the superlative term.
       // If no claims at all → all superlatives are unbounded.
+      // §7 INVARIANT (W1.1 P2): treating any resolved_source_id as "covered" is
+      // safe ONLY because claimVerificationGate runs LAST and re-derives the
+      // terminal verdict. W1.1 now persists resolved_source_id on needs_human/
+      // rejected claims too, so if W1.2 reorders the binder earlier this MUST
+      // become isClaimVerified(c) (verification==='verified') — see claimVerify.ts.
       const verifiedClaims = asset.claims.filter(
         (c) => c.resolved_source_id !== null
       );

@@ -192,8 +192,13 @@ export function createClaimVerificationGate(
       // thrown away: re-gating (reviewClaims) had to re-extract, and the
       // geoReadiness evidence_binding pillar was structurally always-false.
       // Writing them back onto ctx.asset lets the caller (assembleContentSet)
-      // persist them via updateAssetGateStatus. This does NOT change the gate
-      // decision — only what data survives the fold.
+      // persist them via updateAssetGateStatus. This is decision-invariant
+      // WITHIN a single fold (this gate runs last, so the mutation is
+      // post-decision), but it intentionally changes the PERSISTED state that
+      // SUBSEQUENT folds (re-gate) read — including resolved_source_id stamped
+      // on needs_human/rejected claims. The cheap gates' resolved_source_id
+      // checks stay §7-safe only while this gate runs LAST (see W1.1 P2 note in
+      // verifiableNumbers.ts / claimVerify.ts isClaimVerified).
       asset.claims = result.claims;
 
       // ---- Step 3: map VerifyDecision to ContentGateResult ----

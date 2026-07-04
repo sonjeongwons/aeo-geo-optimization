@@ -300,6 +300,8 @@ export const jsonLdShapeGate = {
     const numericHits = findNumericsInText(allText, asset.language);
     if (numericHits.length > 0) {
       // Check if any resolved claim text contains the token.
+      // §7 INVARIANT (W1.1 P2): resolved_source_id-only is safe ONLY while the
+      // binder runs LAST; W1.2 reordering MUST switch this to isClaimVerified().
       const resolvedClaims = asset.claims.filter(
         (c) => c.resolved_source_id !== null
       );

@@ -9,6 +9,7 @@
  */
 import { describe, it, expect } from "vitest";
 import { claimVerificationGate } from "../src/content/gates/claimVerification.js";
+import { isClaimVerified } from "../src/content/claimVerify.js";
 import type {
   ContentAsset,
   ContentGateContext,
@@ -91,5 +92,31 @@ describe("W1.1 — claimVerificationGate persists resolved claims onto the asset
     const result = await claimVerificationGate.apply(ctx);
     expect(result.action).toBe("pass");
     expect(a.claims).toEqual([]);
+  });
+
+  it("persists an UNBOUND claim with verification!=='verified' (needs_human) — W1.1 P2 state", async () => {
+    // A fabricated capability with no matching source → does NOT bind.
+    const text = "guaranteed military grade quantum encryption for all messages";
+    const src = source("Talkie AI: a revenue-sharing program for content creators");
+    const a = asset(text, [capabilityClaim(text)]);
+    const ctx: ContentGateContext = { asset: a, siblings: [], brandAliases: [], claimSources: [src] };
+
+    const result = await claimVerificationGate.apply(ctx);
+
+    expect(result.action).toBe("needs_human");
+    // The claim IS persisted, but as unverified — a resolved_source_id-only
+    // reader would wrongly treat it as covered (the exact W1.1 P2 hazard).
+    expect(a.claims).toHaveLength(1);
+    expect(a.claims[0]!.verification).not.toBe("verified");
+    // The defense-in-depth predicate correctly rejects it.
+    expect(isClaimVerified(a.claims[0]!)).toBe(false);
+  });
+
+  it("isClaimVerified requires BOTH a resolved source AND verification==='verified'", () => {
+    const base = capabilityClaim("x");
+    expect(isClaimVerified({ ...base, resolved_source_id: "s", verification: "verified" })).toBe(true);
+    expect(isClaimVerified({ ...base, resolved_source_id: "s", verification: "needs_human" })).toBe(false);
+    expect(isClaimVerified({ ...base, resolved_source_id: "s", verification: "rejected" })).toBe(false);
+    expect(isClaimVerified({ ...base, resolved_source_id: null, verification: "verified" })).toBe(false);
   });
 });

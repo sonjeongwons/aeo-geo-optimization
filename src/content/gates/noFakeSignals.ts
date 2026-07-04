@@ -148,7 +148,10 @@ export const noFakeSignalsGate = {
       return { action: "pass", gate: "noFakeSignalsGate" };
     }
 
-    // Build set of claim texts with resolved sources for coverage check
+    // Build set of claim texts with resolved sources for coverage check.
+    // §7 INVARIANT (W1.1 P2): resolved_source_id-only is safe ONLY while the
+    // binder (claimVerificationGate) runs LAST; W1.2 reordering MUST switch this
+    // to isClaimVerified() (see claimVerify.ts).
     const resolvedClaimTexts = asset.claims
       .filter((c) => c.resolved_source_id !== null)
       .map((c) => c.claim_text.toLowerCase());
