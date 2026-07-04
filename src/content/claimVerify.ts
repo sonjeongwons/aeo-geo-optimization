@@ -420,7 +420,9 @@ function findMatchingSource(
       const srcWords = tokenize(srcNorm);
       if (srcWords.length > 0) {
         const overlap = srcWords.filter((w) => wordPresentIn(w, claimWords));
-        if (overlap.length / srcWords.length >= 2 / 3) {
+        // W1.10: require a DISTINCTIVE overlap word — a 2/3 overlap made only of
+        // generic domain nouns (서비스/회원/service…) must not bind.
+        if (overlap.length / srcWords.length >= 2 / 3 && overlap.some((w) => !isGenericNoun(w))) {
           score = 1;
         }
       }
@@ -438,7 +440,8 @@ function findMatchingSource(
         claimWords.length >= 4
       ) {
         const claimInSrc = claimWords.filter((w) => wordPresentIn(w, srcWords));
-        if (claimInSrc.length / claimWords.length >= 2 / 3) {
+        // W1.10: same distinctive-overlap requirement in the claim⊆source direction.
+        if (claimInSrc.length / claimWords.length >= 2 / 3 && claimInSrc.some((w) => !isGenericNoun(w))) {
           score = 1;
         }
       }
@@ -548,6 +551,28 @@ function wordMatch(a: string, b: string): boolean {
 /** True if `word` matches any token in `list` (exact or CJK-stem, per wordMatch). */
 function wordPresentIn(word: string, list: string[]): boolean {
   return list.some((w) => wordMatch(word, w));
+}
+
+/**
+ * Generic, capability-neutral domain nouns (W1.10). These appear in almost every
+ * claim/source of a given domain, so a 2/3 keyword overlap made up ONLY of these
+ * would false-VERIFY an unrelated capability (e.g. an infinite-memory claim
+ * binding to an image-generation source purely because both say "서비스"/
+ * "service"). The overlap must therefore include >= 1 DISTINCTIVE (non-generic)
+ * word. Matched via wordMatch so CJK inflections (서비스입니다 → 서비스) count.
+ */
+const GENERIC_DOMAIN_NOUNS: readonly string[] = [
+  // Korean
+  "서비스", "회원", "공간", "기능", "시스템", "플랫폼", "제공", "이용", "사용", "고객", "업체", "업계",
+  // Japanese
+  "サービス", "会員", "機能", "システム", "プラットフォーム", "提供", "利用", "顧客",
+  // English
+  "service", "services", "platform", "system", "feature", "features", "user", "users", "customer", "customers",
+];
+
+/** True when `word` is a generic capability-neutral domain noun. */
+function isGenericNoun(word: string): boolean {
+  return GENERIC_DOMAIN_NOUNS.some((g) => wordMatch(word, g));
 }
 
 // ---------------------------------------------------------------------------

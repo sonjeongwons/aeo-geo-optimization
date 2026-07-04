@@ -96,6 +96,33 @@ describe("claimVerify claim⊆source matching (§7-safe recall)", () => {
     expect(result.claims[0]?.resolved_source_id).toBe(src.id);
   });
 
+  it("W1.10: a capability claim sharing ONLY a generic noun with an unrelated source does NOT bind", () => {
+    // Both mention "feature"/"platform" (generic) but describe DIFFERENT
+    // capabilities — must not false-verify.
+    const src = source("in-chat image generation feature for the platform");
+    const text = "unlimited memory retention feature";
+    const result = verifyAndDecide({
+      body: body(text),
+      language: "en",
+      claims: [capabilityClaim(text)],
+      sources: [src],
+    });
+    expect(result.claims[0]?.resolved_source_id).toBeNull();
+    expect(result.decision).toBe("needs_human");
+  });
+
+  it("W1.10: a capability claim sharing DISTINCTIVE words still binds", () => {
+    const src = source("the platform offers unlimited memory retention across sessions");
+    const text = "unlimited memory retention feature";
+    const result = verifyAndDecide({
+      body: body(text),
+      language: "en",
+      claims: [capabilityClaim(text)],
+      sources: [src],
+    });
+    expect(result.claims[0]?.resolved_source_id).toBe(src.id);
+  });
+
   it("a short claim (<4 significant words) sharing NON-contiguous words does NOT loose-match", () => {
     const src = source("EMORA offers a creator economy for monetizing AI characters and content");
     // 3 significant words, all present in the source but NOT a contiguous substring
