@@ -565,6 +565,10 @@ export async function assembleContentSet(
       await updateAssetGateStatus(asset.id, {
         gateStatus: terminalStatus,
         gateReport,
+        // W1.1: persist the resolved claims the claimVerificationGate wrote back
+        // onto the asset (resolved_source_id + verification set), so re-gating
+        // reads them instead of re-running paid extraction.
+        claims: asset.claims,
       });
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : String(err);
@@ -667,6 +671,10 @@ export async function regateAsset(
   await updateAssetGateStatus(asset.id, {
     gateStatus: gateResult.terminalStatus,
     gateReport: gateResult.gateReport,
+    // W1.1/W1.3: persist the re-resolved claims (verification flips to
+    // 'verified' once the underlying claim_source was signed) so the stored
+    // claims stay accurate across the $0 re-gate self-heal loop.
+    claims: asset.claims,
   });
 
   return {

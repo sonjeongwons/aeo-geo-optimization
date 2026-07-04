@@ -186,6 +186,16 @@ export function createClaimVerificationGate(
         extractionFailed,
       });
 
+      // ---- W1.1: persist the RESOLVED claims back onto the asset ----
+      // verifyAndDecide returns claims with resolved_source_id + verification
+      // set. Previously these were discarded, so the (paid) extraction was
+      // thrown away: re-gating (reviewClaims) had to re-extract, and the
+      // geoReadiness evidence_binding pillar was structurally always-false.
+      // Writing them back onto ctx.asset lets the caller (assembleContentSet)
+      // persist them via updateAssetGateStatus. This does NOT change the gate
+      // decision — only what data survives the fold.
+      asset.claims = result.claims;
+
       // ---- Step 3: map VerifyDecision to ContentGateResult ----
       switch (result.decision) {
         case "pass":

@@ -307,6 +307,7 @@ describe("assembleContentSet — gate_status from fold result only", () => {
     // updateAssetGateStatus must be called with 'passed' — proves fold result drives status.
     expect(updateAssetGateStatus).toHaveBeenCalledWith(ASSET_ID_1, {
       gateStatus: "passed",
+      claims: expect.any(Array),
       gateReport: expect.arrayContaining([
         expect.objectContaining({ gate: "alwaysPassGate", action: "pass" }),
       ]),
@@ -322,6 +323,7 @@ describe("assembleContentSet — gate_status from fold result only", () => {
 
     expect(updateAssetGateStatus).toHaveBeenCalledWith(ASSET_ID_1, {
       gateStatus: "blocked",
+      claims: expect.any(Array),
       gateReport: expect.arrayContaining([
         expect.objectContaining({ gate: "alwaysBlockGate", action: "block" }),
       ]),
@@ -572,6 +574,7 @@ describe("re-gate is $0 — no LLM call", () => {
     expect(result.terminalStatus).toBe("passed");
     expect(updateAssetGateStatus).toHaveBeenCalledWith(ASSET_ID_1, {
       gateStatus: "passed",
+      claims: expect.any(Array),
       gateReport: expect.arrayContaining([
         expect.objectContaining({ gate: "alwaysPassGate", action: "pass" }),
       ]),
