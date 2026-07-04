@@ -26,6 +26,7 @@ import type {
   ContentGateContext,
   ContentGateResult,
 } from "../types.js";
+import { getCharBand, ANSWER_BLOCK_MAX_WORDS } from "../wordCount.js";
 
 export interface ReadinessPillar {
   key: string;
@@ -47,9 +48,22 @@ export interface GeoReadinessScore {
 
 const ADVISORY_THRESHOLD = 0.5;
 
-/** Answer-block self-contained length band (length_units). Below=thin, far above=not a liftable passage. */
+/**
+ * Answer-block self-contained length FLOOR (length_units). Below this a passage
+ * is too thin to be a liftable answer. This is a LENIENT advisory floor (looser
+ * than the enforced §6 band's lower bound); the UPPER bound is derived per-script
+ * from the SAME band wordCount.ts enforces (getCharBand for CJK, else the word
+ * band) so a valid answer_block the pipeline forced into that band NEVER fails
+ * this advisory pillar (W6.3 — the old hardcoded 320 contradicted the ko band
+ * of up to 501 chars).
+ */
 const ANSWER_MIN_UNITS = 40;
-const ANSWER_MAX_UNITS = 320;
+
+/** Per-script upper length bound, matching the enforced wordCount band. */
+function answerMaxUnits(language: string): number {
+  const band = getCharBand(language);
+  return band ? band.maxChars : ANSWER_BLOCK_MAX_WORDS;
+}
 
 /**
  * Score the GEO-readiness pillars present on a pre-deploy ContentAsset.
@@ -68,7 +82,7 @@ export function scoreGeoReadiness(asset: ContentAsset): GeoReadinessScore {
     case "answer_block": {
       pillars.push({
         key: "answer_length_band",
-        ok: body.length_units >= ANSWER_MIN_UNITS && body.length_units <= ANSWER_MAX_UNITS,
+        ok: body.length_units >= ANSWER_MIN_UNITS && body.length_units <= answerMaxUnits(asset.language),
       });
       pillars.push({
         key: "evidence_binding",

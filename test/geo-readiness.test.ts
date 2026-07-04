@@ -107,3 +107,27 @@ describe("geoReadinessGate (advisory — never blocks)", () => {
     expect(geoReadinessGate.phase).toBe("content");
   });
 });
+
+describe("answer_length_band matches the enforced per-script band (W6.3)", () => {
+  const koAsset = (length_units: number): ContentAsset =>
+    ({ ...asset({ content_type: "answer_block", text: "...", length_units, numeric_claim_ids: [], source_ids: ["s1"] }), language: "ko" }) as ContentAsset;
+
+  it("a 400-char Korean answer_block passes the length pillar (would fail the old hardcoded 320 cap)", () => {
+    // ko enforced band is up to ceil(167*3.0)=501 chars; 400 is valid.
+    const r = scoreGeoReadiness(koAsset(400));
+    expect(r.missing).not.toContain("answer_length_band");
+    expect(r.score).toBe(1);
+  });
+
+  it("a Korean answer_block above the ko band (600 chars) still fails the pillar", () => {
+    const r = scoreGeoReadiness(koAsset(600));
+    expect(r.missing).toContain("answer_length_band");
+  });
+
+  it("an English answer_block over the word band (400 words) fails the pillar", () => {
+    const r = scoreGeoReadiness(
+      asset({ content_type: "answer_block", text: "...", length_units: 400, numeric_claim_ids: [], source_ids: ["s1"] }),
+    );
+    expect(r.missing).toContain("answer_length_band");
+  });
+});

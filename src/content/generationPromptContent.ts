@@ -356,18 +356,18 @@ export function buildContentPromptForFormat(
           .join(", ")
       : "(none inferred)";
 
-  // ---- Verified comparative facts block (comparison_table only) ----
-  // Inject the ingested, SOURCED competitor/brand facts so the model builds the
-  // table strictly FROM verified claims (→ cells resolve against signed
-  // claim_sources → §7 passes). Without this the model invents cells that the
-  // claimVerificationGate blocks.
-  const comparativeFactsBlock =
-    format === "comparison_table" && comparativeFacts && comparativeFacts.length > 0
-      ? `\nVERIFIED COMPETITOR & BRAND FACTS — build the comparison table ONLY from these sourced facts.\n` +
-        `Do NOT invent, infer, or add any competitor capability not listed here. If a fact is absent for a\n` +
-        `cell, write "정보 없음"/"Not disclosed" (do NOT guess). Render each fact faithfully (translate into\n` +
-        `${language} if needed) — keep it factual and neutral, never disparaging.\n` +
-        `CELL WRITING RULES (MANDATORY — cells violating these are rejected):\n` +
+  // ---- Comparison-table discipline (ALWAYS-ON for comparison_table) ----
+  // The cell-writing / diversity / neutrality / methodology rules apply to EVERY
+  // comparison table, whether or not ingested competitor facts exist (W6.2 — the
+  // rules previously vanished when comparativeFacts was empty, the common
+  // new-customer case, letting the model emit undisciplined numeric/superlative
+  // cells and near-duplicate tables).
+  const comparisonRulesBlock =
+    format === "comparison_table"
+      ? `\nCOMPARISON TABLE RULES (MANDATORY — cells/tables violating these are rejected):\n` +
+        `  • Open the table's surrounding text with ONE sentence stating the comparison criteria — what\n` +
+        `    dimension is compared and that competitor information reflects publicly available / officially\n` +
+        `    published information. Keep it neutral and factual.\n` +
         `  • Write each cell QUALITATIVELY in a few words (e.g. "Yes — persistent memory", "Limited",\n` +
         `    "Subscription only", "Not disclosed"). Describe the CAPABILITY, not metrics.\n` +
         `  • Do NOT put ANY raw number in a cell — no user counts, prices, dates, percentages, "18 million",\n` +
@@ -375,6 +375,8 @@ export function buildContentPromptForFormat(
         `  • Do NOT use ANY superlative or ranking word (leading, best, #1, top, largest, most popular,\n` +
         `    most, biggest, fastest, advanced, robust, comprehensive, extensive, powerful).\n` +
         `  • Neutral comparison only — never disparage a competitor.\n` +
+        `  • For any competitor capability you are not certain of, write "정보 없음"/"Not disclosed" —\n` +
+        `    NEVER guess or infer a competitor capability.\n` +
         `  GOOD cells: "Yes — persistent memory", "Revenue-sharing for creators", "Subscription only",\n` +
         `              "Group chat supported", "Not disclosed".\n` +
         `  BAD cells (rejected): "18 million users", "Best-in-class memory", "Most advanced image gen",\n` +
@@ -383,10 +385,29 @@ export function buildContentPromptForFormat(
         `    DIFFERENT theme so they are not near-duplicates — e.g. table 1 = memory & core features,\n` +
         `    table 2 = pricing & access, table 3 = content policy & safety, table 4 = customization &\n` +
         `    creator tools. Use DIFFERENT columns and a DIFFERENT phrasingGroupId per theme. Near-identical\n` +
-        `    tables are rejected as duplicates.\n` +
-        `FACTS:\n` +
-        comparativeFacts.slice(0, 40).map((f) => `  - ${f}`).join("\n") +
-        `\n`
+        `    tables are rejected as duplicates.\n`
+      : "";
+
+  // ---- Verified comparative facts block (comparison_table only) ----
+  // Inject the ingested, SOURCED competitor/brand facts so the model builds the
+  // table strictly FROM verified claims (→ cells resolve against signed
+  // claim_sources → §7 passes). When NO facts are ingested (common for a new
+  // customer) the model MUST NOT invent competitor capabilities (§0/§7): it may
+  // only describe the BRAND's own attributes and must mark competitor cells
+  // "Not disclosed".
+  const hasFacts = comparativeFacts != null && comparativeFacts.length > 0;
+  const comparativeFactsBlock =
+    format === "comparison_table"
+      ? hasFacts
+        ? `\nVERIFIED COMPETITOR & BRAND FACTS — build the comparison table ONLY from these sourced facts.\n` +
+          `Do NOT invent, infer, or add any competitor capability not listed here. Render each fact\n` +
+          `faithfully (translate into ${language} if needed) — factual and neutral, never disparaging.\n` +
+          `FACTS:\n` +
+          comparativeFacts!.slice(0, 40).map((f) => `  - ${f}`).join("\n") +
+          `\n`
+        : `\nNO INGESTED COMPETITOR FACTS ARE AVAILABLE. You therefore must NOT state any specific\n` +
+          `competitor capability. Fill the brand's own column ONLY from the brand attributes above, and\n` +
+          `write "정보 없음"/"Not disclosed" for every competitor cell. Do NOT guess competitor behavior.\n`
       : "";
 
   // ---- Product attributes ----
@@ -472,6 +493,7 @@ export function buildContentPromptForFormat(
     `  ICP / use cases: ${icpContext}\n` +
     `  Key attributes: ${attributeList}\n` +
     `  Known competitors (in native script where possible): ${competitorList}\n` +
+    comparisonRulesBlock +
     comparativeFactsBlock +
     `\n` +
     `OUTPUT FORMAT (strict JSON object with "items" array, no text outside the JSON):\n` +

@@ -1238,7 +1238,7 @@ describe("buildContentPromptForFormat — verified comparative facts injection",
     expect(userPrompt).not.toContain("VERIFIED COMPETITOR & BRAND FACTS");
   });
 
-  it("omits the block when no facts are supplied", () => {
+  it("omits the verified-facts block when no facts are supplied", () => {
     const { userPrompt } = buildContentPromptForFormat({
       language: "en",
       format: "comparison_table",
@@ -1247,5 +1247,44 @@ describe("buildContentPromptForFormat — verified comparative facts injection",
       totalItemsRequested: 2,
     });
     expect(userPrompt).not.toContain("VERIFIED COMPETITOR & BRAND FACTS");
+  });
+
+  // ---- W6.2: comparison discipline is ALWAYS-ON (even with no ingested facts) ----
+
+  it("always enforces cell/diversity/no-number rules for comparison_table, even without facts", () => {
+    const { userPrompt } = buildContentPromptForFormat({
+      language: "en",
+      format: "comparison_table",
+      cells: [makeCell("en", "comparison_table", "owned_net")],
+      brief: BRIEF,
+      totalItemsRequested: 2,
+    });
+    expect(userPrompt).toContain("COMPARISON TABLE RULES");
+    expect(userPrompt).toMatch(/DIVERSITY/);
+    expect(userPrompt).toMatch(/Not disclosed/);
+    expect(userPrompt).toMatch(/comparison criteria/i); // methodology sentence
+  });
+
+  it("blocks inventing competitor capabilities when no facts exist (§0/§7 guard)", () => {
+    const { userPrompt } = buildContentPromptForFormat({
+      language: "en",
+      format: "comparison_table",
+      cells: [makeCell("en", "comparison_table", "owned_net")],
+      brief: BRIEF,
+      totalItemsRequested: 2,
+    });
+    expect(userPrompt).toContain("NO INGESTED COMPETITOR FACTS");
+    expect(userPrompt).toMatch(/must NOT state any specific/i);
+  });
+
+  it("does NOT emit the comparison rules for non-comparison formats", () => {
+    const { userPrompt } = buildContentPromptForFormat({
+      language: "en",
+      format: "answer_block",
+      cells: [makeCell("en", "answer_block", "owned_net")],
+      brief: BRIEF,
+      totalItemsRequested: 2,
+    });
+    expect(userPrompt).not.toContain("COMPARISON TABLE RULES");
   });
 });
