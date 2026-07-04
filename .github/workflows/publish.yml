@@ -75,10 +75,12 @@ jobs:
         run: |
           set -uo pipefail
           # Per-customer config: slug|customerId|industry|hubRepo|hubBaseUrl|brand
-          # Add emora here once its industry_template is ACTIVE in this DB.
+          # Customer ids + industries verified against the live DB (2026-07-04):
+          # emora=3cb680d5 (active template ai-companion, brand EMORA),
+          # smimdate=f9d13b5c (active template rotation-dating, brand 스밈).
           CONFIGS=(
-            "smimdate|37a8f2bd-97e9-4428-b98a-d892c079e98a|rotation-dating|sonjeongwons/aeo-smim-hub|https://sonjeongwons.github.io/aeo-smim-hub|smim"
-            "emora|5eb8d7ef-41c4-499c-a651-3f96eb75997c|ai-character-chat|sonjeongwons/aeo-owned-net-hub|https://sonjeongwons.github.io/aeo-owned-net-hub|emora"
+            "smimdate|f9d13b5c-32c7-4e89-ada4-7a7a876882d1|rotation-dating|sonjeongwons/aeo-smim-hub|https://sonjeongwons.github.io/aeo-smim-hub|smim"
+            "emora|3cb680d5-190d-4485-b456-4c645a91a16a|ai-companion|sonjeongwons/aeo-owned-net-hub|https://sonjeongwons.github.io/aeo-owned-net-hub|emora"
           )
           for cfg in "${CONFIGS[@]}"; do
             IFS='|' read -r slug cid industry repo baseurl brand <<< "$cfg"

@@ -22,7 +22,7 @@ const REPORT_TO = process.env["REPORT_TO"] ?? "doradola38@gmail.com";
 // Customer roster (slug, display name, hub base URL for page counts).
 const CUSTOMERS = [
   { slug: "smimdate", name: "스밈 (SMIM)", hub: "https://sonjeongwons.github.io/aeo-smim-hub" },
-  { slug: "emora-mini", name: "EMORA", hub: "https://sonjeongwons.github.io/aeo-owned-net-hub" },
+  { slug: "emora", name: "EMORA", hub: "https://sonjeongwons.github.io/aeo-owned-net-hub" },
 ];
 
 interface Point {

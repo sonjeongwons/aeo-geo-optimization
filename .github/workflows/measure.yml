@@ -32,7 +32,7 @@ jobs:
       GEMINI_GROUNDING_SAMPLE_PCT: ${{ github.event.inputs.grounding_pct || '3' }}
       LOG_LEVEL: info
       # Space-separated list of customer slugs; dispatch input overrides.
-      CUSTOMERS: ${{ github.event.inputs.customer || 'emora-mini smimdate' }}
+      CUSTOMERS: ${{ github.event.inputs.customer || 'emora smimdate' }}
       # Email report delivery (Gmail SMTP). Set MAIL_USERNAME + MAIL_PASSWORD
       # (a Gmail App Password) secrets to arm; unset → report built but not sent.
       MAIL_USERNAME: ${{ secrets.MAIL_USERNAME }}
