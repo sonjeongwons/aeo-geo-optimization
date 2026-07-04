@@ -61,7 +61,12 @@ export default async function CompetitorsPage() {
         })
       : String(latestFull.week_start);
 
-  // Sort sov by value desc (brand protagonist first).
+  // W7.2 / §7 honesty — identify the brand by ENTITY IDENTITY, not by sorted
+  // position. computeSoV always emits the brand entry first in the source
+  // array; capture its name BEFORE re-sorting. Sorting by value desc puts the
+  // highest-mentioned entity at index 0, which is a COMPETITOR whenever the
+  // owner is losing — so position-0 must never be assumed to be the brand.
+  const brandName = sov.length > 0 ? sov[0]!.entityName : null;
   const sorted = [...sov].sort((a, b) => b.value - a.value);
   const totalMentions =
     sorted.length > 0 ? sorted[0]!.totalMentions : 0;
@@ -120,9 +125,9 @@ export default async function CompetitorsPage() {
               gap: "12px",
             }}
           >
-            {sorted.map((entity, idx) => {
-              // Brand = first entry (highest SOV usually) → cyan; others → slate
-              const isBrand = idx === 0;
+            {sorted.map((entity) => {
+              // W7.2 — brand is matched by identity (entityName), not by rank.
+              const isBrand = entity.entityName === brandName;
               const barColor = isBrand ? "var(--accent)" : "#64748B";
               const pct = (entity.value * 100).toFixed(1);
               return (

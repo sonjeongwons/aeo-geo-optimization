@@ -20,7 +20,7 @@ import {
   getReportSnapshot,
 } from "../../../lib/engine.server";
 import { toWireReport } from "../../../lib/wire";
-import { GapList } from "../../../components/GapList";
+import { GapListWithEvidence } from "../../../components/GapListWithEvidence";
 import { DisclosureFooter } from "../../../components/DisclosureFooter";
 import { SELF_JUDGE_BIAS_DISCLOSURE } from "@engine/domain/metrics.types";
 import type { RunReport } from "@engine/domain/metrics.types";
@@ -181,11 +181,8 @@ export default async function GapsPage() {
           행을 클릭하면 증거 응답 ID를 펼쳐 볼 수 있습니다.
           증거 버튼을 클릭하면 원문 응답이 표시됩니다.
         </p>
-        <GapList
-          questions={questions}
-          limit={50}
-          showEvidence
-        />
+        {/* W7.1 — client wrapper wires the 증거 button to EvidenceDrawer. */}
+        <GapListWithEvidence questions={questions} limit={50} />
       </section>
 
       {/* Evidence note */}

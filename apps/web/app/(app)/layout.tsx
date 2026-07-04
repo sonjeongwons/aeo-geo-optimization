@@ -17,6 +17,7 @@
 import { redirect } from "next/navigation";
 import { requireCustomerScopeWithSession } from "../../lib/session";
 import type { ServerSession } from "../../lib/session";
+import { NavLink } from "../../components/NavLink";
 
 // ---------------------------------------------------------------------------
 // Sidebar nav items
@@ -26,7 +27,8 @@ const NAV_SECTIONS = [
   {
     label: "측정",
     items: [
-      { href: "/", label: "개요 (Overview)" },
+      // W7.5 — "/" is the marketing page; the dashboard overview lives at /overview.
+      { href: "/overview", label: "개요 (Overview)" },
       { href: "/trends", label: "트렌드" },
     ],
   },
@@ -87,6 +89,7 @@ export default async function AppLayout({
     >
       {/* Fixed left sidebar */}
       <aside
+        className="app-sidebar"
         style={{
           width: "var(--sidebar-width)",
           flexShrink: 0,
@@ -157,9 +160,7 @@ export default async function AppLayout({
                 {section.label}
               </div>
               {section.items.map((item) => (
-                <a key={item.href} href={item.href} className="nav-link">
-                  {item.label}
-                </a>
+                <NavLink key={item.href} href={item.href} label={item.label} />
               ))}
             </div>
           ))}
@@ -219,6 +220,7 @@ export default async function AppLayout({
 
       {/* Main content area — offset by sidebar width */}
       <main
+        className="app-main"
         style={{
           flex: 1,
           marginLeft: "var(--sidebar-width)",

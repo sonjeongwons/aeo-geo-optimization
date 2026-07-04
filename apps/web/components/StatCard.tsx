@@ -26,6 +26,12 @@ interface StatCardProps {
   caveat?: string;
   /** Optional sub-label beneath the main value */
   subLabel?: string;
+  /**
+   * W7.6 — When true, renders as the primary/headline KPI: accent border,
+   * accent numerals, larger min-width so the headline SMR reads above the
+   * secondary stats in the KPI grid.
+   */
+  emphasis?: boolean;
 }
 
 export function StatCard({
@@ -35,16 +41,20 @@ export function StatCard({
   deltaRaw = false,
   caveat,
   subLabel,
+  emphasis = false,
 }: StatCardProps) {
   return (
     <div
       className="card"
       style={{
-        padding: "20px 24px",
+        padding: emphasis ? "24px 28px" : "20px 24px",
         display: "flex",
         flexDirection: "column",
         gap: "8px",
-        minWidth: "180px",
+        minWidth: emphasis ? "240px" : "180px",
+        borderColor: emphasis ? "var(--accent)" : undefined,
+        // W7.6 — headline card spans wider so it dominates the KPI grid.
+        gridColumn: emphasis ? "1 / -1" : undefined,
       }}
     >
       <p
@@ -72,10 +82,14 @@ export function StatCard({
         <span
           className="metric"
           style={{
-            fontSize: "var(--text-metric-size)",
-            lineHeight: "var(--text-metric-line)",
+            fontSize: emphasis
+              ? "var(--text-display-size)"
+              : "var(--text-metric-size)",
+            lineHeight: emphasis
+              ? "var(--text-display-line)"
+              : "var(--text-metric-line)",
             fontWeight: "var(--text-metric-weight)",
-            color: "var(--text)",
+            color: emphasis ? "var(--accent)" : "var(--text)",
             fontVariantNumeric: "tabular-nums",
           }}
         >

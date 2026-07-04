@@ -15,6 +15,7 @@ import { redirect } from "next/navigation";
 import { requireCustomerScope } from "../../../lib/session";
 import { listReportSnapshots } from "../../../lib/engine.server";
 import { DeltaBadge } from "../../../components/DeltaBadge";
+import { formatPct } from "../../../lib/format";
 
 export const dynamic = "force-dynamic";
 
@@ -203,7 +204,7 @@ export default async function ReportsListPage() {
                           fontWeight: 600,
                         }}
                       >
-                        {(smrVal * 100).toFixed(1)}%
+                        {formatPct(smrVal)}
                       </td>
                       <td style={{ padding: "0 16px", textAlign: "right" }}>
                         <DeltaBadge delta={wow} asPercent />
@@ -215,7 +216,7 @@ export default async function ReportsListPage() {
                           color: "var(--text-muted)",
                         }}
                       >
-                        {(visVal * 100).toFixed(2)}%
+                        {formatPct(visVal, 2)}
                       </td>
                       <td
                         style={{
@@ -225,7 +226,7 @@ export default async function ReportsListPage() {
                             absRate > 0.15 ? "var(--warning)" : "var(--text-muted)",
                         }}
                       >
-                        {(absRate * 100).toFixed(1)}%
+                        {formatPct(absRate)}
                       </td>
                       <td
                         style={{

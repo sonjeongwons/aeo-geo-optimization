@@ -16,6 +16,7 @@ import { listReportSnapshots } from "../../../lib/engine.server";
 import { TrendChart } from "../../../components/TrendChart";
 import { DeltaBadge } from "../../../components/DeltaBadge";
 import { DisclosureFooter } from "../../../components/DisclosureFooter";
+import { formatPct } from "../../../lib/format";
 import { SELF_JUDGE_BIAS_DISCLOSURE } from "@engine/domain/metrics.types";
 import type { TrendPoint } from "../../../components/TrendChart";
 
@@ -119,7 +120,7 @@ export default async function TrendsPage() {
                 gap: "8px",
               }}
             >
-              {(latestSmr * 100).toFixed(1)}%
+              {formatPct(latestSmr)}
               {latestWow !== null && (
                 <DeltaBadge delta={latestWow} asPercent />
               )}
@@ -295,7 +296,7 @@ export default async function TrendsPage() {
                           fontWeight: 600,
                         }}
                       >
-                        {(smrVal * 100).toFixed(1)}%
+                        {formatPct(smrVal)}
                       </td>
                       <td style={{ padding: "0 16px", textAlign: "right" }}>
                         <DeltaBadge delta={wow} asPercent />
@@ -307,7 +308,7 @@ export default async function TrendsPage() {
                           color: "var(--text-muted)",
                         }}
                       >
-                        {(visVal * 100).toFixed(2)}%
+                        {formatPct(visVal, 2)}
                       </td>
                       <td
                         style={{
@@ -317,7 +318,7 @@ export default async function TrendsPage() {
                             absRate > 0.15 ? "var(--warning)" : "var(--text-muted)",
                         }}
                       >
-                        {(absRate * 100).toFixed(1)}%
+                        {formatPct(absRate)}
                       </td>
                       <td style={{ padding: "0 16px" }}>
                         <a

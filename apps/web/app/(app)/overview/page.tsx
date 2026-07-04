@@ -33,6 +33,7 @@ import { CoverageMatrix } from "../../../components/CoverageMatrix";
 import { GapList } from "../../../components/GapList";
 import { DisclosureFooter } from "../../../components/DisclosureFooter";
 import { DeltaBadge } from "../../../components/DeltaBadge";
+import { formatPct } from "../../../lib/format";
 import type { RunReport } from "@engine/domain/metrics.types";
 import type { TrendPoint } from "../../../components/TrendChart";
 import { SELF_JUDGE_BIAS_DISCLOSURE } from "@engine/domain/metrics.types";
@@ -105,12 +106,17 @@ export default async function OverviewPage() {
       ? parseFloat(String(latestFull.wow_smr_delta))
       : null;
 
-  // Top competitor SoV
+  // W7.2 — Brand is identified by source-array position (computeSoV always
+  // pushes the brand entry first), NOT by sorted rank. The "top competitor"
+  // card must therefore exclude the brand entry, otherwise when the brand
+  // out-mentions every competitor the brand itself would be crowned "top
+  // competitor" (and vice-versa). Compare competitors among themselves.
+  const competitorSovs = wire.sov.slice(1);
   const topSov =
-    wire.sov.length > 0
-      ? wire.sov.reduce(
+    competitorSovs.length > 0
+      ? competitorSovs.reduce(
           (best, s) => (s.value > best.value ? s : best),
-          wire.sov[0]!,
+          competitorSovs[0]!,
         )
       : null;
 
@@ -165,21 +171,23 @@ export default async function OverviewPage() {
           gap: "16px",
         }}
       >
+        {/* W7.6 — headline SMR emphasized as primary KPI; formatPct guards NaN%. */}
         <StatCard
           label="SMR (Share of Model Response)"
-          value={smrValue === 0 ? "0.0%" : `${(smrValue * 100).toFixed(1)}%`}
+          value={formatPct(smrValue)}
           delta={wowDelta}
           subLabel={`${wire.smr.brandHits} / ${wire.smr.nTotal} 응답`}
+          emphasis
         />
         <StatCard
           label="Visibility"
-          value={`${(visibilityValue * 100).toFixed(2)}%`}
+          value={formatPct(visibilityValue, 2)}
           subLabel="역순위 합 / N"
         />
         {topSov ? (
           <StatCard
             label={`상위 경쟁사 SoV (${topSov.entityName})`}
-            value={`${(topSov.value * 100).toFixed(1)}%`}
+            value={formatPct(topSov.value)}
             subLabel={`${topSov.entityMentions} / ${topSov.totalMentions} 언급`}
           />
         ) : (
@@ -191,7 +199,7 @@ export default async function OverviewPage() {
         )}
         <StatCard
           label="Abstain Rate"
-          value={`${(abstainRate * 100).toFixed(1)}%`}
+          value={formatPct(abstainRate)}
           caveat={
             abstainRate > 0.15
               ? "기권율 높음 — 판정 신뢰도 주의"
@@ -202,8 +210,8 @@ export default async function OverviewPage() {
         {wire.citationShare && (
           <StatCard
             label="SMR (Citation / 인용)"
-            value={`${(wire.citationShare.value * 100).toFixed(1)}%`}
-            subLabel={`언급 중 ${(wire.citationShare.citationOfMentionRate * 100).toFixed(0)}%가 클릭 가능한 인용`}
+            value={formatPct(wire.citationShare.value)}
+            subLabel={`언급 중 ${formatPct(wire.citationShare.citationOfMentionRate, 0)}가 클릭 가능한 인용`}
             caveat={
               wire.citationShare.value < wire.smr.value
                 ? "인용은 언급의 부분집합 — 트래픽 레버"
@@ -214,15 +222,15 @@ export default async function OverviewPage() {
         {wire.recommendationShare && (
           <StatCard
             label="SMR (Recommendation / 추천)"
-            value={`${(wire.recommendationShare.value * 100).toFixed(1)}%`}
-            subLabel={`언급 중 ${(wire.recommendationShare.recommendationOfMentionRate * 100).toFixed(0)}%가 추천`}
+            value={formatPct(wire.recommendationShare.value)}
+            subLabel={`언급 중 ${formatPct(wire.recommendationShare.recommendationOfMentionRate, 0)}가 추천`}
             caveat="퍼널 최종 단계 (보수적 하한값)"
           />
         )}
         {wire.pawc && (
           <StatCard
             label="조기 위치 단어점유율 (PAWC)"
-            value={`${(wire.pawc.value * 100).toFixed(1)}%`}
+            value={formatPct(wire.pawc.value)}
             subLabel="답변 초반 가중 브랜드 비중 (참고)"
           />
         )}
