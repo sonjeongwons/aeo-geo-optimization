@@ -15,6 +15,7 @@ import "../src/config/env.js";
 import { env } from "../src/config/env.js";
 import { getDb, closeDb } from "../src/db/kysely.js";
 import { closePool } from "../src/db/pool.js";
+import { PAGE_STYLE, renderRobots } from "../src/deploy/connectors/render.js";
 import { promises as fs } from "node:fs";
 import path from "node:path";
 
@@ -74,6 +75,20 @@ function esc(s: string): string {
   return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
 }
 
+/**
+ * Reverse esc() for titles SCANNED from already-escaped on-disk <title> tags, so
+ * the single esc() at emit time does not double-escape (W5.3: "EMORA&#39;s" was
+ * displayed literally). DB-derived titles are raw and skip this.
+ */
+function htmlUnescape(s: string): string {
+  return s
+    .replace(/&#39;/g, "'")
+    .replace(/&quot;/g, '"')
+    .replace(/&gt;/g, ">")
+    .replace(/&lt;/g, "<")
+    .replace(/&amp;/g, "&");
+}
+
 function bodyTitle(b: any): string {
   switch (b?.content_type) {
     case "definition": return String(b.text);
@@ -110,7 +125,9 @@ async function scanDiskPages(
       let html: string;
       try { html = await fs.readFile(path.join(langPath, slug, "index.html"), "utf8"); } catch { continue; }
       const m = html.match(/<title>([^<]*)<\/title>/i);
-      out.push({ url: `${hub}/${lang}/${slug}/`, lang, title: (m?.[1] ?? slug).trim() });
+      // The scanned <title> is already HTML-escaped; unescape so the single
+      // esc() at emit time doesn't double-escape (W5.3).
+      out.push({ url: `${hub}/${lang}/${slug}/`, lang, title: htmlUnescape((m?.[1] ?? slug).trim()) });
     }
   }
   return out;
@@ -172,11 +189,17 @@ async function main(): Promise<void> {
   <link rel="canonical" href="${esc(HUB)}/">
   <title>${esc(BRAND.titleTag)}</title>
   <meta name="description" content="${esc(BRAND.metaDescription)} Official site: ${esc(EMORA_OFFICIAL)}">
+  <meta property="og:type" content="website">
+  <meta property="og:title" content="${esc(BRAND.titleTag)}">
+  <meta property="og:description" content="${esc(BRAND.metaDescription)}">
+  <meta property="og:url" content="${esc(HUB)}/">
+  <style>${PAGE_STYLE}</style>
   <script type="application/ld+json">
 ${JSON.stringify(orgJsonLd, null, 2)}
   </script>
 </head>
 <body>
+  <header class="site"><a href="${esc(EMORA_OFFICIAL)}" rel="home">${esc(BRAND.orgName)}</a></header>
   <main>
     <h1>${esc(BRAND.h1)}</h1>
     <p>${BRAND.introHtml}
@@ -186,13 +209,18 @@ ${JSON.stringify(orgJsonLd, null, 2)}
 ${sections}
   </main>
   <footer>
-    <p>${seen.size} answer page(s). Auto-generated, §7-gated.</p>
+    <p>${seen.size} answer page(s) · <a href="${esc(EMORA_OFFICIAL)}" rel="home">${esc(BRAND.orgName)}</a></p>
   </footer>
 </body>
 </html>`;
 
   await fs.writeFile(path.join(OUT, "index.html"), html, "utf8");
-  console.log(`[hub-index] wrote linking index.html: ${seen.size} pages across ${byLang.size} language(s) + Organization JSON-LD`);
+
+  // Emit a citation-bot-friendly robots.txt advertising the sitemap (W9.1) — the
+  // cheapest real discovery lever for ChatGPT-search / Perplexity / Gemini.
+  await fs.writeFile(path.join(OUT, "robots.txt"), renderRobots({ sitemapUrl: `${HUB}/sitemap.xml` }), "utf8");
+
+  console.log(`[hub-index] wrote linking index.html: ${seen.size} pages across ${byLang.size} language(s) + Organization JSON-LD + robots.txt`);
 }
 
 main()

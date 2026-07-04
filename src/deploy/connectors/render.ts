@@ -174,7 +174,7 @@ function headlineOf(text: string, max = 70): string {
 // System + CJK font stack, readable column, table borders, dark mode, mobile.
 // ---------------------------------------------------------------------------
 
-const PAGE_STYLE =
+export const PAGE_STYLE =
   ":root{color-scheme:light dark}" +
   "*{box-sizing:border-box}html{-webkit-text-size-adjust:100%}" +
   'body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,' +
