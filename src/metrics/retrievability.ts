@@ -127,3 +127,29 @@ export interface EmbeddingAdapter {
   /** Embed a batch of texts → one vector each (same order). */
   embed(texts: string[]): Promise<number[][]>;
 }
+
+/** Retrievability of an asset, or a skip reason when the adapter is off/quota'd. */
+export type ScoredRetrievability = AssetRetrievability & { skipped?: string };
+
+/**
+ * Score an asset's passages against its target queries using an EmbeddingAdapter.
+ * Degrades to a safe no-op (skipped) when there is nothing to score OR the
+ * adapter returns no embeddings (unconfigured / quota) — never throws, never
+ * blocks. The passages are the asset's answer chunks; the queries are the
+ * fan-out sub-queries the asset should answer (e.g. the measured prompt set).
+ */
+export async function scoreAssetWithAdapter(
+  adapter: EmbeddingAdapter,
+  passages: string[],
+  queries: string[],
+  topK = 3,
+): Promise<ScoredRetrievability> {
+  if (passages.length === 0 || queries.length === 0) {
+    return { perQuery: [], coverage: 0, meanMax: 0, skipped: "no passages or queries" };
+  }
+  const [passEmb, queryEmb] = await Promise.all([adapter.embed(passages), adapter.embed(queries)]);
+  if (passEmb.length === 0 || queryEmb.length === 0) {
+    return { perQuery: [], coverage: 0, meanMax: 0, skipped: "no embeddings (adapter off / quota)" };
+  }
+  return assetRetrievability(queryEmb, passEmb, topK);
+}
