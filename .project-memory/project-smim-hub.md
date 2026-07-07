@@ -1,0 +1,27 @@
+---
+name: project-smim-hub
+description: "SMIM (스밈) second customer — dedicated owned-net hub, live URL, publish pipeline specifics"
+metadata: 
+  node_type: memory
+  type: project
+  originSessionId: ff4bc712-38f1-4212-abc7-824793702d20
+---
+
+SMIM (스밈, customer_id 37a8f2bd-97e9-4428-b98a-d892c079e98a, slug smimdate) is the second AEO/GEO customer alongside [[project-aeo-geo-phase0]]. Korean-only rotation-dating service. Facts are owner-attested (attested_by j1.son@samsung.com, source https://smimdate.com) in config/customers/smim-facts.json (13 facts) → ingested as signed claim_source rows.
+
+**Dedicated hub (decided 2026-07-03): smim gets its OWN hub, NOT the emora one.** Mixing brands in one hub falsely associates entities via Organization JSON-LD (§7 entity hygiene). 
+- Repo: github.com/sonjeongwons/aeo-smim-hub (public, sonjeongwons account — same operator as emora hub).
+- Live: https://sonjeongwons.github.io/aeo-smim-hub/ (Pages main/root). As of 2026-07-03: **6 §7-clean Korean owned_net pages** + llms.txt/llms-full.txt, all HTTP 200 (검증된 회원 정의·매니저 검수·서류 즉시 파기·전용공간·매칭 후 카톡방·AI 리포트).
+- Local tree: ./.smim-hub (gitignored in main repo, its own git remote).
+
+**Publish flow (per set):** gen-content → queue-content → approve-deploy --approver j1.son@samsung.com → publish-content --execute --channel owned_net (LEASES rows; publishUnit needs status='leased' or fails 'not_leased') → scripts/publish-owned-net.mts <leasedQueueIds> (writes FsTarget) → HUB_BRAND=smim gen-hub-index + gen-hub-extras → scripts/sync-owned-net-github.sh (commit+push). Publish steps need env override: OWNED_NET_OUT_DIR=./.smim-hub, OWNED_NET_HUB_BASE_URL=https://sonjeongwons.github.io/aeo-smim-hub, GH_PAGES_REPO=sonjeongwons/aeo-smim-hub, HUB_BRAND=smim.
+
+**Only owned_net connector is 'ready'** — pr_wire/directory/web2/social/entity are stubs. Use gen-content `--channel owned_net` to avoid wasted Gemini spend. Per-run yield is LOW (~1-3 clean owned_net passes) because (a) matrix is breadth-not-depth and (b) Korean numeric content (연봉 7천만/5만원/dates) is blocked by verifiableNumbersGate — Korean numeral→claim_source binding is an OPEN gap worth fixing to unlock volume.
+
+**Full auto-publish (owner directed 2026-07-03 — "수동승인없이 자동화"):** .github/workflows/publish.yml (weekly Tue 04:00 UTC cron + workflow_dispatch) runs scripts/auto-publish.sh per customer: gen×ATTEMPTS → §7 gate → queue(passed-only) → auto-approve (approver "auto-publish@aeo (owner-authorized)") → lease → publish → rebuild index/llms → push to hub. SAFETY: only gate_status='passed' publishes (blocked/needs_human structurally excluded); §12 audit records the approver; pages reversible. Needs repo secrets DATABASE_URL + GEMINI_API_KEY (exist) + HUB_PUSH_TOKEN (PAT with contents:write on hubs — set 2026-07-03 with the to-be-ROTATED ghp_ PAT; replace with a fine-grained token). Verified unattended: run 28635598075 published 1 page → hub now 7 pages, all HTTP 200. BOTH smimdate + emora armed in publish.yml CONFIGS (2026-07-03). emora: customer emora-mini (5eb8d7ef), active template ai-character-chat (0bc79af3), 7 owner-attested facts (config/customers/emora-facts.json, attested doradola38@gmail.com, confirmed by owner), own hub sonjeongwons/aeo-owned-net-hub (brand=emora, never mixed with smim). emora content is ENGLISH. First emora cloud run (28639337624) succeeded but produced 0 pages — the FREE Gemini key's daily quota was exhausted by same-day testing; the graceful no-op fired (no push, hub intact at 19 pages). Weekly cron with fresh quota will produce pages.
+
+**Gemini key switched to FREE tier (AIza…, 2026-07-03) in .env + GH secret GEMINI_API_KEY.** Cost $0 but rate/daily limits throttle throughput. Mitigated by retryOnRateLimit backoff in src/providers/gemini.ts (429 → wait+retry, GEMINI_RATE_LIMIT_RETRIES/_BASE_MS) so runs slow rather than fail; publish.yml tuned for headroom (TOTAL=10, ATTEMPTS=2, timeout 180m). Generic fact ingester: scripts/ingest-facts.mts <facts.json>. Hub index generators (gen-hub-index/gen-hub-extras) now MERGE on-disk pages so a DB rebuild never drops legacy pages.
+
+**Weekly email report (2026-07-03):** scripts/email-report.mts → Korean HTML per customer (funnel 언급/인용/추천률 + 전대비 Δpt + CUMULATIVE all-dates table + hub page count) → report-email.html/report-subject.txt. Wired into BOTH crons (measure.yml, publish.yml) via dawidd6/action-send-mail (Gmail SMTP 465), gated on MAIL_USERNAME/MAIL_PASSWORD secrets (SET: doradola38@gmail.com + Gmail App Password — revocable). Recipient hardcoded doradola38@gmail.com. Verified via local curl SMTP (SENT OK). Metrics: run + run_smr_overall (brand_hits/citation_hits/recommendation_hits over judged_ok). Baseline SMR=0% both (AI not yet mentioning brands) — report tracks the climb. NOTE: measure.yml CUSTOMERS must be 'emora-mini smimdate' (fixed from 'emora').
+
+**AEO render quality (2026-07-03, commit 5a79fed):** src/deploy/connectors/render.ts now emits inline schema.org JSON-LD on EVERY page (faq→FAQPage, else→Article w/ headline/articleBody/inLanguage/dates/url/isPartOf WebSite + publisher/about Organization+sameAs when brand set), plus <h1>, <meta description>, "About <brand>" blurb, optional relatedLinks. Brand selected by HUB_BRAND env (HUB_BRANDS map in ownedNet.ts + rerender-hub.mts + gen-hub-index.mts). scripts/rerender-hub.mts re-renders live pages with the current template (used to upgrade the 7 live smim pages — verified live).
