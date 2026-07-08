@@ -38,3 +38,16 @@ work started on another machine.
 ## Secrets / infra
 - GitHub Actions crons: `measure.yml` (Mon) + `publish.yml` (Tue) — Timescale Cloud + Gemini free key + Gmail SMTP report. `report_only=true` dispatch sends the email without a measurement cycle.
 - Free-tier Gemini key: daily quota exhausts fast → generation may be deferred to quota reset.
+
+### Encrypted env sync across PCs (private repo)
+Local dev secrets (`.env` = DATABASE_URL, GEMINI_API_KEY, OWNED_NET_* …) travel via git
+ENCRYPTED, never plaintext (plaintext in history is permanent + GitHub secret-scanning
+auto-revokes tokens). `secrets/env.enc` (committed) is the ciphertext; the passphrase is
+the ONE out-of-band secret, stored per-PC in `.env.passphrase` (gitignored) or
+`ENV_ENC_PASSPHRASE`.
+- After editing `.env`:  `bash scripts/sync-env.sh encrypt`  → then commit `secrets/env.enc`.
+- On another PC after clone/pull: put the passphrase in `.env.passphrase`, then
+  `bash scripts/sync-env.sh decrypt`  → recreates `.env`. (Also run `gh auth login` there
+  for GitHub push; the GitHub PAT is NOT in `.env`.)
+- NEVER commit `.env` or `.env.passphrase` (both gitignored). If a real secret ever lands
+  in git history, ROTATE it.
