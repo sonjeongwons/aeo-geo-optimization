@@ -1,0 +1,35 @@
+name: DB keep-alive
+
+# Pings the Timescale DB every few hours so it never sits idle long enough to
+# auto-suspend (an idle suspend broke the daily email). Trivial SELECT — no
+# Gemini, no writes. Runs in GitHub's cloud, independent of any local PC.
+#
+# NOTE: this prevents an IDLE-based pause. If Timescale pauses for a plan/billing/
+# trial reason instead, keep-alive won't help — check the Timescale console.
+on:
+  schedule:
+    - cron: "0 */3 * * *" # every 3 hours
+  workflow_dispatch: {}
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      DATABASE_URL: ${{ secrets.DATABASE_URL }}
+    steps:
+      - name: Guard — require DATABASE_URL
+        id: guard
+        run: |
+          if [ -z "$DATABASE_URL" ]; then echo "armed=false" >> "$GITHUB_OUTPUT"; else echo "armed=true" >> "$GITHUB_OUTPUT"; fi
+      - if: steps.guard.outputs.armed == 'true'
+        uses: actions/checkout@v4
+      - if: steps.guard.outputs.armed == 'true'
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - if: steps.guard.outputs.armed == 'true'
+        run: npm ci
+      - if: steps.guard.outputs.armed == 'true'
+        run: npx tsx scripts/db-ping.mts
