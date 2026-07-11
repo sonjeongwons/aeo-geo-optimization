@@ -22,6 +22,7 @@ vi.mock("../../src/db/repo.js", () => ({
   markWorkUnitError: vi.fn().mockResolvedValue(undefined),
   markWorkUnitSkipped: vi.fn().mockResolvedValue(undefined),
   createRun: vi.fn().mockResolvedValue({ id: "run-001" }),
+  findResumableRun: vi.fn().mockResolvedValue(null),
   snapshotNTotal: vi.fn().mockResolvedValue(undefined),
   insertWorkUnit: vi.fn().mockResolvedValue(undefined),
   advanceRotationState: vi.fn().mockResolvedValue(undefined),

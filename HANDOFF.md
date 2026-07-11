@@ -42,12 +42,29 @@ that CLAUDE.md used to list):
 - **RESULT (E2E verified):** daily email now shows BOTH — subject `… 스밈 언급률 0.0% ·
   EMORA 언급률 0.0%` (0.0% is honest: brands not yet in Gemini answers, pre-generation).
 
-### Open gaps (next)
-- EMORA email shows "발행 페이지 0개": its owned-net-hub pages are NOT in `url_registry`
-  (pageCount matches by hub URL). SMIM has 8. Register emora hub pages so the count is honest.
-- emora measurement cycle (n_total=1404) never completes on free-tier+75min → each Monday
-  leaves a new zombie run. Options: bound work-units / resume the incomplete runId /
-  reduce the intent matrix. (Email is now resilient to it, but the runs still pile up.)
+### Open gaps — BOTH ADDRESSED (2026-07-11, session 3 cont.)
+- **EMORA "발행 페이지 0개" → FIXED.** Its 19 hub pages are legacy on-disk (no url_registry
+  rows, no asset linkage). New `scripts/backfill-legacy-hub-urls.mts` reads the hub's live
+  sitemap.xml and registers each URL as the true published fact (asset_id = deterministic
+  UUIDv5 of the URL — url_registry.asset_id has NO FK, verified; `indexing_status='unknown'`
+  = honest, §7; `publish_meta.backfill='legacy-disk-sitemap'`). Ran for emora → 19 rows;
+  email now shows EMORA 발행 페이지 19개, SMIM 8개. Re-run after future disk-only publishes.
+- **emora measurement never completes (n_total=1404) → FIXED via resume.** Root cause: a
+  baseline = cartesian(36 Q × 13 langs × 3 samples) = 1404 work-units (intentional breadth);
+  free-tier Gemini only attempts ~86/cycle before the 75-min CI kill (1318 pending, 59 err,
+  27 done), and STEP 1 always minted a NEW run → weekly zombie pile-up. Fix: `runCycle` now
+  RESUMES an incomplete baseline (`repo.findResumableRun`: status='running', n_total>0,
+  started_at<now-2h, has pending) instead of creating a fresh one — coverage accumulates
+  across cycles until the plan finishes, then a fresh baseline starts. Correctness (adversarial
+  review found + fixed 2 P1s): on resume it executes ONLY the frozen plan's DB-pending units
+  (`repo.findPendingWorkUnitKeys` filter) so the SMR numerator can't escape the frozen
+  denominator (§5.2) even if the question set changed, skips re-insert/snapshot/startRun, and
+  a tight-budget cycle leaves the run resumable (never flips to over_budget). Tests:
+  `test/pipeline/baseline-resume.test.ts`. Operating runs never resume (rotation cursors).
+  - REMAINING OWNER DECISION: even with resume, emora's full 1404-unit baseline takes ~16
+    weekly cycles to complete on the free tier. Faster/fresher options = fewer languages
+    (measure top-N markets), fewer samples, or a paid Gemini key. This changes measurement
+    breadth so it's the owner's call — see the question raised at session end.
 
 ## DB status (2026-07-11): RESOLVED — up + kept warm
 Timescale had idle-auto-suspended (Jul 7 → Jul 11); owner RESUMED it in the console.

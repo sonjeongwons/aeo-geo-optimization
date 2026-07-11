@@ -332,18 +332,42 @@ export async function runCycle(
   log.info({ customerId, customerSlug, kind }, "runCycle: starting");
 
   // -------------------------------------------------------------------------
-  // STEP 1 — Create run row in 'planned' status.
+  // STEP 1 — Resume an incomplete run, or create a new one.
+  //
+  // A big baseline (e.g. a multilingual customer with 1000+ work-units) can't
+  // finish inside one rate-limited CI window; the process is killed at the job
+  // timeout, leaving the run 'running' with pending units. Rather than spawn a
+  // fresh zombie every week (never completing, showing near-zero coverage), we
+  // RESUME the incomplete run so coverage accumulates across cycles until the
+  // plan is fully executed, then a subsequent cycle starts a fresh baseline.
+  //
+  // Only baseline resumes: operating runs advance rotation cursors (STEP 6) and
+  // are small enough to finish in one window, so resuming them would double-count
+  // cursor advancement. Resume is safe because buildPlan is DETERMINISTIC (same
+  // questions/models/langs → same work-units + request_hashes), insertWorkUnit is
+  // idempotent (ON CONFLICT DO NOTHING), and runResponse skips already-'done' units.
   // -------------------------------------------------------------------------
-  const runRow = await repo.createRun({
-    customerId,
-    kind,
-    nSamples: budget.maxSamples,
-    temperature: PLAN_TEMPERATURE,
-  });
+  const resumable =
+    kind === "baseline" ? await repo.findResumableRun(customerId, kind) : null;
 
-  const runId = runRow.id;
-
-  log.info({ runId, customerId, kind }, "runCycle: run created");
+  let runId: string;
+  const resuming = resumable !== null;
+  if (resumable) {
+    runId = resumable.id;
+    log.info(
+      { runId, customerId, kind, frozenNTotal: resumable.nTotal },
+      "runCycle: RESUMING incomplete run (pending work-units remain from a prior cycle)",
+    );
+  } else {
+    const runRow = await repo.createRun({
+      customerId,
+      kind,
+      nSamples: budget.maxSamples,
+      temperature: PLAN_TEMPERATURE,
+    });
+    runId = runRow.id;
+    log.info({ runId, customerId, kind }, "runCycle: run created");
+  }
 
   // -------------------------------------------------------------------------
   // STEP 2 — Build the plan (pure, no IO).
@@ -392,6 +416,43 @@ export async function runCycle(
   );
 
   // -------------------------------------------------------------------------
+  // STEP 2b — Resolve which units to EXECUTE this invocation.
+  //
+  // Fresh run: the whole plan.
+  // RESUME: only the frozen plan's still-'pending' units. We filter the freshly
+  // regenerated (deterministic) plan down to the DB's pending set. This is the
+  // correctness backbone of resume:
+  //   - a unit the DB doesn't have pending (already 'done', or 'error', or NEVER
+  //     part of the frozen plan because the active-question set grew) is EXCLUDED
+  //     → the SMR numerator can never exceed the frozen n_total denominator (§5.2),
+  //     and surface carry-forward can't re-process a done unit (no double-count).
+  // Persist (STEP 5) is skipped on resume, so no new rows leak past n_total either.
+  // -------------------------------------------------------------------------
+  const wuKey = (wu: { questionId: string; modelId: string; language: string; sampleIdx: number }) =>
+    `${wu.questionId}|${wu.modelId}|${wu.language}|${wu.sampleIdx}`;
+
+  let executableUnits = workUnits;
+  if (resuming) {
+    const pendingKeys = await repo.findPendingWorkUnitKeys(runId);
+    executableUnits = workUnits.filter((wu) => pendingKeys.has(wuKey(wu)));
+    log.info(
+      { runId, frozenNTotal: resumable?.nTotal, regeneratedNTotal: nTotal, pendingToRun: executableUnits.length },
+      "runCycle: resume — executing frozen plan's remaining pending units only",
+    );
+    if (executableUnits.length === 0) {
+      // No regenerated unit intersects the DB pending set (e.g. the question set
+      // was replaced). Do NOT finishRun('completed') — that would strand real
+      // pending units against the frozen denominator. Leave the run 'running' so a
+      // later cycle (with a matching plan) can still resume it.
+      log.warn(
+        { runId, customerId },
+        "runCycle: resume matched zero pending units — leaving run resumable, no work this cycle",
+      );
+      return null;
+    }
+  }
+
+  // -------------------------------------------------------------------------
   // STEP 3 — budget.preflight: check estimated USD before any execution.
   //
   // Surface-aware estimate (Phase 4 T15):
@@ -417,8 +478,10 @@ export async function runCycle(
     models.map((m) => [m.id, { modality: m.modality }] as const),
   );
 
-  // Surface-aware cost breakdown.
-  const costBreakdown = buildPlanCostBreakdown(workUnits, modalityMap);
+  // Surface-aware cost breakdown — over the units actually to be EXECUTED this
+  // invocation (on resume, the remaining pending units, NOT the whole plan — else
+  // the estimate would over-count already-done work and spuriously trip the cap).
+  const costBreakdown = buildPlanCostBreakdown(executableUnits, modalityMap);
   const estimatedUsd = estimateSurfacePlanCost(
     costBreakdown,
     AVG_GEN_USD,
@@ -437,19 +500,29 @@ export async function runCycle(
   });
 
   if (!preflightResult.ok) {
+    // On RESUME, do NOT flip the run to 'over_budget' — that status is not
+    // resumable, so a single tight-budget cycle would permanently strand the
+    // accumulated coverage + frozen denominator. Leave it 'running' so the next
+    // cycle (after the weekly/monthly cap resets) resumes it. Fresh runs finalize
+    // as over_budget per DESIGN §11.
     log.warn(
       {
         runId,
         customerId,
+        resuming,
         reason: preflightResult.reason,
         estimatedUsd,
         weeklyRemaining: preflightResult.weeklyRemaining,
         monthlyRemaining: preflightResult.monthlyRemaining,
       },
-      "runCycle: preflight failed — marking over_budget",
+      resuming
+        ? "runCycle: preflight failed on resume — leaving run resumable (not over_budget)"
+        : "runCycle: preflight failed — marking over_budget",
     );
 
-    await repo.finishRun(runId, "over_budget");
+    if (!resuming) {
+      await repo.finishRun(runId, "over_budget");
+    }
     return null;
   }
 
@@ -465,13 +538,29 @@ export async function runCycle(
 
   // -------------------------------------------------------------------------
   // STEP 4 — snapshot n_total on the run row BEFORE any execution (§5.2).
+  //
+  // On RESUME the denominator was frozen when the run was first created — do NOT
+  // re-snapshot (§5.2 requires a stable denominator even if the regenerated plan
+  // differs slightly, e.g. a question toggled active between cycles). A drift is
+  // logged for visibility but the frozen n_total wins.
   // -------------------------------------------------------------------------
-  await repo.snapshotNTotal(runId, nTotal);
+  if (resuming) {
+    if (resumable && resumable.nTotal !== nTotal) {
+      log.warn(
+        { runId, frozenNTotal: resumable.nTotal, regeneratedNTotal: nTotal },
+        "runCycle: resumed plan differs from frozen n_total — keeping frozen denominator (§5.2)",
+      );
+    }
+    log.info({ runId, nTotal: resumable?.nTotal }, "runCycle: resume — n_total kept frozen");
+  } else {
+    await repo.snapshotNTotal(runId, nTotal);
+    log.info({ runId, nTotal }, "runCycle: n_total snapshotted");
+  }
 
-  log.info({ runId, nTotal }, "runCycle: n_total snapshotted");
-
-  // Handle empty plan (no questions due / no configured models).
-  if (nTotal === 0) {
+  // Handle empty FRESH plan (no questions due / no configured models). Not
+  // reachable on resume: an empty regenerated plan yields zero executableUnits,
+  // which already returned null above (leaving the run resumable).
+  if (!resuming && nTotal === 0) {
     log.warn(
       { runId, customerId, kind },
       "runCycle: plan produced zero work-units — completing immediately",
@@ -484,18 +573,24 @@ export async function runCycle(
 
   // -------------------------------------------------------------------------
   // STEP 5 — Persist work-units (idempotent via ON CONFLICT DO NOTHING).
+  //
+  // Skipped on RESUME: the frozen plan's units are already persisted. Re-inserting
+  // the regenerated plan could add units beyond the frozen n_total (if the active
+  // question set grew), which would both violate §5.2 and keep the run eternally
+  // resumable (new pending rows never in any executableUnits set).
   // -------------------------------------------------------------------------
-  for (const wu of workUnits) {
-    await repo.insertWorkUnit({
-      runId,
-      questionId: wu.questionId,
-      modelId: wu.modelId,
-      language: wu.language,
-      sampleIdx: wu.sampleIdx,
-    });
+  if (!resuming) {
+    for (const wu of workUnits) {
+      await repo.insertWorkUnit({
+        runId,
+        questionId: wu.questionId,
+        modelId: wu.modelId,
+        language: wu.language,
+        sampleIdx: wu.sampleIdx,
+      });
+    }
+    log.info({ runId, count: workUnits.length }, "runCycle: work-units persisted");
   }
-
-  log.info({ runId, count: workUnits.length }, "runCycle: work-units persisted");
 
   // -------------------------------------------------------------------------
   // STEP 6 — Advance rotation cursors for tiers scheduled this cycle.
@@ -513,8 +608,13 @@ export async function runCycle(
 
   // -------------------------------------------------------------------------
   // STEP 7 — Transition run → 'running'.
+  //          On RESUME the run is already 'running' — skip so we preserve the
+  //          ORIGINAL started_at (the true measurement start; §5.2) rather than
+  //          resetting the clock each cycle.
   // -------------------------------------------------------------------------
-  await repo.startRun(runId);
+  if (!resuming) {
+    await repo.startRun(runId);
+  }
 
   // -------------------------------------------------------------------------
   // STEP 8 — Fan-out: execute or enqueue one job per pending work-unit.
@@ -539,12 +639,15 @@ export async function runCycle(
     // -----------------------------------------------------------------------
     // PATH A — synchronous inline execution (baseline / diagnose CLI).
     // -----------------------------------------------------------------------
-    log.info({ runId, nTotal }, "runCycle: executing work-units inline (sync path)");
+    log.info(
+      { runId, nTotal, executing: executableUnits.length },
+      "runCycle: executing work-units inline (sync path)",
+    );
 
     let hadError = false;
     let hadOverBudget = false;
 
-    for (const wu of workUnits) {
+    for (const wu of executableUnits) {
       // Build the ResponseRunPayload for this work-unit.
       const payload_ = {
         runId,
@@ -826,7 +929,7 @@ export async function runCycle(
     // -----------------------------------------------------------------------
     log.info({ runId, nTotal }, "runCycle: enqueueing response.run jobs (async path)");
 
-    for (const wu of workUnits) {
+    for (const wu of executableUnits) {
       const jobPayload = {
         runId,
         customerId,
@@ -863,7 +966,7 @@ export async function runCycle(
     }
 
     log.info(
-      { runId, jobsEnqueued: workUnits.length },
+      { runId, jobsEnqueued: executableUnits.length },
       "runCycle: response.run jobs enqueued",
     );
 

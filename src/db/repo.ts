@@ -858,6 +858,73 @@ export async function findLatestCompletedBaselineRun(
   return row ?? null;
 }
 
+/**
+ * Find a RESUMABLE run — one that a prior cycle left mid-flight (status='running')
+ * with pending work-units still to execute, and that is old enough to be certainly
+ * dead (no live process). Used so a large baseline whose plan can't finish inside a
+ * single CI window (e.g. a multilingual customer with 1000+ work-units under a
+ * rate-limited free-tier key) RESUMES and accumulates coverage across cycles instead
+ * of spawning a fresh zombie 'running' run every week.
+ *
+ * Guards:
+ *   - status='running' AND n_total>0 (a real, started plan)
+ *   - started_at older than `staleBeforeMs` (default 2h > the 120-min CI job timeout,
+ *     so we never grab a run that a concurrent job might still be executing)
+ *   - has at least one 'pending' work-unit (else it's effectively done → finalize it,
+ *     don't resume)
+ * Returns the newest such run, or null.
+ */
+export async function findResumableRun(
+  customerId: string,
+  kind: 'baseline' | 'operating',
+  staleBeforeMs = 2 * 60 * 60 * 1000,
+): Promise<{ id: string; nTotal: number } | null> {
+  const cutoff = new Date(Date.now() - staleBeforeMs);
+  const row = await db()
+    .selectFrom('run as r')
+    .select(['r.id', 'r.n_total'])
+    .where('r.customer_id', '=', customerId)
+    .where('r.kind', '=', kind)
+    .where('r.status', '=', 'running')
+    .where('r.n_total', '>', 0)
+    .where('r.started_at', '<', cutoff)
+    .where((eb) =>
+      eb.exists(
+        eb
+          .selectFrom('work_unit as wu')
+          .select(sql`1`.as('x'))
+          .whereRef('wu.run_id', '=', 'r.id')
+          .where('wu.status', '=', 'pending'),
+      ),
+    )
+    .orderBy('r.started_at', 'desc')
+    .limit(1)
+    .executeTakeFirst();
+
+  if (!row || row.n_total == null) return null;
+  return { id: row.id, nTotal: Number(row.n_total) };
+}
+
+/**
+ * Composite keys of the still-'pending' work-units for a run, as
+ * `questionId|modelId|language|sampleIdx` strings. Used by the baseline resume
+ * path to execute ONLY the frozen plan's remaining units — filtering the
+ * regenerated (deterministic) plan to this set guarantees the SMR numerator can
+ * never escape the frozen denominator (§5.2), even if the active-question set
+ * changed between cycles, and prevents re-processing already-'done' units.
+ */
+export async function findPendingWorkUnitKeys(runId: string): Promise<Set<string>> {
+  const rows = await db()
+    .selectFrom('work_unit')
+    .select(['question_id', 'model_id', 'language', 'sample_idx'])
+    .where('run_id', '=', runId)
+    .where('status', '=', 'pending')
+    .execute();
+  return new Set(
+    rows.map((r) => `${r.question_id}|${r.model_id}|${r.language}|${r.sample_idx}`),
+  );
+}
+
 // ===========================================================================
 // Work Unit
 // ===========================================================================
