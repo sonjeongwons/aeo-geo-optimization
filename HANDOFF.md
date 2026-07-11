@@ -18,13 +18,14 @@ matchmaking, ko, smimdate.com). Canonical ids + hubs + constraints: see CLAUDE.m
 - **Data/infra:** owner-directed §7-filtered facts ingested (emora 161, smimdate 17 claim_sources) · SMIM customer onboarded (was missing) · EMORA consolidated to canonical `emora` (stale publish ids fixed — the real cause of "0 generated content") · both live hubs re-rendered (fixed a live raw-markdown-table bug) · GSC/Bing verification files durably emitted to hubs.
 - **Leading indicator (top lever, LIVE):** retrievability — Gemini embedding adapter (`gemini-embedding-001`) + pure scorer + `scripts/score-retrievability.mts`. Verified: EMORA en = 20 queries / 32 passages, **coverage 1.0**, 0 content gaps. Run: `npx tsx scripts/score-retrievability.mts --customer emora --lang en`.
 
-## ⚠ ACTION REQUIRED (2026-07-11): Timescale DB is DOWN
-The daily/weekly automation CAN'T reach the measurement DB — every connection
-times out (Timescale Cloud dev tier auto-SUSPENDED on idle since the Jul 7 publish;
-it does NOT wake from a connection alone). **Owner must log into the Timescale Cloud
-console and RESUME the service** (or check trial expiry). Until then, the daily email
-sends a "⚠ DB 연결 실패 — Timescale 재개 필요" ALERT (not real data), and measure/
-publish crons no-op/fail. Once resumed, everything flows again.
+## DB status (2026-07-11): RESOLVED — up + kept warm
+Timescale had idle-auto-suspended (Jul 7 → Jul 11); owner RESUMED it in the console.
+End-to-end verified: daily report connected + sent a REAL-data email (subject
+"AEO/GEO 리포트 — 2026-07-11 — 스밈 언급률 0.0%"). To prevent recurrence, added
+`db-keepalive.yml` (every 3h `SELECT now()` via `scripts/db-ping.mts`) so it never
+idles into a pause. (Keep-alive won't stop a plan/billing pause — check the console
+if it recurs.) `waitForDb` (pool.ts) also wakes a slow instance; email-report sends
+a "⚠ DB 연결 실패" alert if the DB is ever truly unreachable.
 
 ## Automation reality (important)
 - Claude (me) is NOT a daemon — runs only during an active session. The recurring
