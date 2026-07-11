@@ -61,10 +61,12 @@ that CLAUDE.md used to list):
   denominator (§5.2) even if the question set changed, skips re-insert/snapshot/startRun, and
   a tight-budget cycle leaves the run resumable (never flips to over_budget). Tests:
   `test/pipeline/baseline-resume.test.ts`. Operating runs never resume (rotation cursors).
-  - REMAINING OWNER DECISION: even with resume, emora's full 1404-unit baseline takes ~16
-    weekly cycles to complete on the free tier. Faster/fresher options = fewer languages
-    (measure top-N markets), fewer samples, or a paid Gemini key. This changes measurement
-    breadth so it's the owner's call — see the question raised at session end.
+  - OWNER DECIDED (2026-07-11): restrict emora to **en + ko only**. Applied to prod —
+    emora `customer_language` now = {en, ko} (was 13 langs; the 12 removed incl. de/ja/fr/
+    zh/es/… backed up to scratchpad/emora-langs-backup.json; `ko` was newly added). New
+    baseline ≈ 36 Q × 2 langs × 3 samples = **216 units** → completes in ~2-3 weekly cycles
+    with resume (vs ~16 for the full 13-lang set). smim unchanged (ko only, 30 units). To
+    re-expand later, restore from the backup or re-insert customer_language rows.
 
 ## DB status (2026-07-11): RESOLVED — up + kept warm
 Timescale had idle-auto-suspended (Jul 7 → Jul 11); owner RESUMED it in the console.
