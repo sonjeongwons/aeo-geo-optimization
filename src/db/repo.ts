@@ -1575,6 +1575,33 @@ export async function sumCostSince(
 }
 
 /**
+ * Authoritative rolling USD spend straight from the raw llm_call table (never null:
+ * an idle customer with zero calls in the window sums to 0).
+ *
+ * The cost_daily CAGG is a performance optimization but its SUM returns NULL for a
+ * customer with no rows in the window, which the budget guard treats as a "data
+ * problem" and fails closed — wrongly blocking a customer that has simply been idle
+ * for >7 days (its last measurement aged out of the window). Callers use this as the
+ * fallback when the CAGG is null: it distinguishes genuinely-idle ($0 → allow) from a
+ * real overspend, and is authoritative even if the CAGG lagged/failed to refresh.
+ * Volume is tiny (weekly cron), so the raw scan is cheap.
+ */
+export async function sumLlmCostSinceRaw(
+  customerId: string,
+  since: Date,
+): Promise<number> {
+  const row = await db()
+    .selectFrom('llm_call')
+    .select(db().fn.coalesce(db().fn.sum<string>('usd'), sql<string>`0`).as('total_usd'))
+    .where('customer_id', '=', customerId)
+    .where('ts', '>=', since)
+    .executeTakeFirst();
+
+  const parsed = parseFloat(row?.['total_usd'] ?? '0');
+  return isNaN(parsed) ? 0 : parsed;
+}
+
+/**
  * Return true when the customer has at least one llm_call row.
  *
  * DESIGN §11 fail-closed: isNewCustomer should be false for any customer that

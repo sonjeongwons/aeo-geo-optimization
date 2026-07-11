@@ -187,7 +187,13 @@ async function main(): Promise<void> {
   const costReader = {
     getRollingSpendUsd: async (cid: string, windowDays: number): Promise<number | null> => {
       const since = new Date(Date.now() - windowDays * 24 * 60 * 60 * 1000);
-      return repo.sumCostSince(cid, since);
+      const cagg = await repo.sumCostSince(cid, since);
+      // CAGG SUM is null for a customer with no rows in the window. Fall back to the
+      // authoritative raw llm_call sum (0 when genuinely idle) instead of returning
+      // null — otherwise the fail-closed budget guard blocks any customer that hasn't
+      // measured in >7 days (e.g. smim after emora starved the weekly cron). The raw
+      // value also correctly enforces the cap if the CAGG merely lagged/failed.
+      return cagg ?? (await repo.sumLlmCostSinceRaw(cid, since));
     },
   };
 
