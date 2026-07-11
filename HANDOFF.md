@@ -2,7 +2,45 @@
 
 _Update this file at the end of every session, then commit + push. See CLAUDE.md for the sync protocol._
 
-**Last updated:** 2026-07-05 (session 2). Latest commit: `4dd593e` (+ this handoff commit).
+**Last updated:** 2026-07-11 (session 3). Latest commit: `6d41de0` (+ this handoff commit).
+
+## 🔴 SESSION 3 — end-to-end automation test: 5 cron-breaking bugs found + fixed
+Ran a LIVE `gh workflow run measure.yml` to prove the whole PC-independent chain
+(AI question → Gemini answer → mention/citation judge → SMR → email). It was silently
+broken; fixed all of it (each pushed to main):
+1. **`DATABASE_URL` GitHub secret had a STALE password** (owner reset Timescale) → EVERY
+   cron failing auth silently. Updated the secret via `gh secret set DATABASE_URL` from
+   the verified local `.env`. (If auth breaks again, the password was rotated — re-set it.)
+2. **migrate.ts bypassed the Timescale TLS handling** ("self-signed certificate in chain")
+   → extracted `resolveDbConnection()` in `src/db/pool.ts`, used by both pool + migrate. (`6d41de0`/`95d0ec2`)
+3. **emora languages are re-seeded from `config/customers/emora.yaml` by loadTemplate on
+   EVERY diagnose run** (upsert, never deletes) → a DB-only edit never sticks. THE TEMPLATE
+   IS THE SOURCE OF TRUTH. emora.yaml now = en+ko, 6 questions (3 core intents × en/ko),
+   max_languages 2 → ~36-unit baseline. DB: 33 old non-en/ko questions set `active=false`
+   (FK from work_units blocks delete), 12 stale langs deleted. (`0093d3a`/`6d41de0`)
+4. **measure.yml starved smim** (emora-first ate the 75-min window; smim unmeasured
+   2026-07-02→07-11) + the `workflow_dispatch` `customer` default was `emora` (skipped smim
+   on manual dispatch). Fixed to `smimdate emora` (smallest-first) in both. (`2fc6b4f`/`0093d3a`)
+5. **Budget guard fail-closed blocked any customer idle >7 days**: `getRollingSpendUsd` read
+   only the `cost_daily` CAGG (SUM = null when no rows in window) → treated as data problem →
+   `over_budget`, 0 units. Added `repo.sumLlmCostSinceRaw` (authoritative raw llm_call sum,
+   0 when idle) as the fallback in diagnose's costReader. (`6d41de0`)
+
+**PROVEN working live:** after the fixes, smim's run went `running` (not instant over_budget)
+and EXECUTED real units — `done=3, judged=3, hits=0` (honest 0% mention). The full chain is
+confirmed PC-independent. The remaining `error` units are **free-tier Gemini daily-quota
+exhaustion** (many test runs today), NOT a bug — the resume fix retries pending next cycle.
+
+### ON REOPEN — verify (nothing is broken; just confirm):
+- Did the email for run `29150876194` arrive? (measure step may hit the 75-min timeout on
+  the quota-drained run, but the email step still builds+sends from existing data.)
+- After the free-tier quota resets, the Monday `measure.yml` cron should complete smim(30)
+  + emora(36) cleanly → both in the email with fresh SMR. Or manually re-dispatch:
+  `gh workflow run measure.yml -f customer="smimdate emora"` when quota is fresh.
+- `daily-report.yml` (17:00 KST) + `publish.yml` (Tue) now that DATABASE_URL is fixed — first
+  green run confirms. `db-keepalive.yml` too (was also failing on the stale password).
+
+
 
 ## What this project is
 Off-site AEO/GEO service. Generate §7-honest off-site content, publish to owned-net
