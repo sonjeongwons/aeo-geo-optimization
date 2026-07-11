@@ -32,7 +32,12 @@ jobs:
       GEMINI_GROUNDING_SAMPLE_PCT: ${{ github.event.inputs.grounding_pct || '3' }}
       LOG_LEVEL: info
       # Space-separated list of customer slugs; dispatch input overrides.
-      CUSTOMERS: ${{ github.event.inputs.customer || 'emora smimdate' }}
+      # SMALLEST-FIRST ordering matters: customers are measured sequentially under a
+      # shared 75-min step budget, so a big customer placed first starves the rest
+      # (this is why smim went unmeasured 2026-07-02..07-11 behind emora's 1404-unit
+      # cycle). smim (~30 units) completes in minutes, THEN emora consumes the rest of
+      # the window and resumes across cycles.
+      CUSTOMERS: ${{ github.event.inputs.customer || 'smimdate emora' }}
       # Email report delivery (Gmail SMTP). Set MAIL_USERNAME + MAIL_PASSWORD
       # (a Gmail App Password) secrets to arm; unset → report built but not sent.
       MAIL_USERNAME: ${{ secrets.MAIL_USERNAME }}
