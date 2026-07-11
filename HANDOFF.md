@@ -18,6 +18,22 @@ matchmaking, ko, smimdate.com). Canonical ids + hubs + constraints: see CLAUDE.m
 - **Data/infra:** owner-directed §7-filtered facts ingested (emora 161, smimdate 17 claim_sources) · SMIM customer onboarded (was missing) · EMORA consolidated to canonical `emora` (stale publish ids fixed — the real cause of "0 generated content") · both live hubs re-rendered (fixed a live raw-markdown-table bug) · GSC/Bing verification files durably emitted to hubs.
 - **Leading indicator (top lever, LIVE):** retrievability — Gemini embedding adapter (`gemini-embedding-001`) + pure scorer + `scripts/score-retrievability.mts`. Verified: EMORA en = 20 queries / 32 passages, **coverage 1.0**, 0 content gaps. Run: `npx tsx scripts/score-retrievability.mts --customer emora --lang en`.
 
+## ⚠ ACTION REQUIRED (2026-07-11): Timescale DB is DOWN
+The daily/weekly automation CAN'T reach the measurement DB — every connection
+times out (Timescale Cloud dev tier auto-SUSPENDED on idle since the Jul 7 publish;
+it does NOT wake from a connection alone). **Owner must log into the Timescale Cloud
+console and RESUME the service** (or check trial expiry). Until then, the daily email
+sends a "⚠ DB 연결 실패 — Timescale 재개 필요" ALERT (not real data), and measure/
+publish crons no-op/fail. Once resumed, everything flows again.
+
+## Automation reality (important)
+- Claude (me) is NOT a daemon — runs only during an active session. The recurring
+  jobs are **GitHub Actions crons** (cloud, PC-independent, survive reboot/VSCode close):
+  `measure.yml` (Mon email+measure), `publish.yml` (Tue), and NEW `report-daily.yml`
+  (daily 08:00 UTC / 17:00 KST email, report_only, no Gemini spend).
+- Added DB-wake retry (`waitForDb` in pool.ts) + DB-down alert email so a suspended
+  DB is tolerated/announced rather than failing silently.
+
 ## In progress / next (pick up here)
 1. **Search Console / Bing verification** — owner is verifying the two hub properties in GSC (URL-prefix, HTML-file method; token `google871e8ec1d063f81f.html` served by both hubs). Then Bing "Import from GSC" (or give a Bing code → set `BING_SITE_AUTH` env → auto-emitted). Goal: 2nd free measurement channel (Copilot/ChatGPT citation data) → ingest CSV/API into the weekly email.
 2. **Surface retrievability in the weekly email report** (embedding-gated) — coverage % + content-gap list next to Gemini recall.
