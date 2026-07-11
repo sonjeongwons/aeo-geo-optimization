@@ -14,7 +14,7 @@
  */
 import "../src/config/env.js";
 import { getDb, closeDb } from "../src/db/kysely.js";
-import { closePool } from "../src/db/pool.js";
+import { closePool, waitForDb } from "../src/db/pool.js";
 import { promises as fs } from "node:fs";
 
 const REPORT_TO = process.env["REPORT_TO"] ?? "doradola38@gmail.com";
@@ -211,6 +211,9 @@ function customerSection(c: { name: string }, pts: Point[], pages: number, engin
 }
 
 async function main(): Promise<void> {
+  // Wake a suspended Timescale Cloud DB before querying (idle auto-suspend makes
+  // the first connection time out — retry with backoff).
+  await waitForDb();
   const nowIso = process.env["REPORT_STAMP"] ?? "";
   const sections: string[] = [];
   let headlineBits: string[] = [];
