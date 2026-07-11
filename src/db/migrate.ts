@@ -39,7 +39,7 @@
 import { fileURLToPath } from 'node:url';
 import path from 'node:path';
 import { runner } from 'node-pg-migrate';
-import { env } from '../config/env.js';
+import { resolveDbConnection } from './pool.js';
 
 // ---------------------------------------------------------------------------
 // Resolve the migrations directory relative to this file's location so the
@@ -63,8 +63,13 @@ const count     = downIdx !== -1 ? parseInt(args[downIdx + 1] ?? '1', 10) : unde
 async function migrate(): Promise<void> {
   console.log(`[migrate] direction=${direction} dir=${MIGRATIONS_DIR}`);
 
+  // Resolve DATABASE_URL with the SAME TLS handling as the app pool so migrations
+  // connect to Timescale Cloud (self-signed chain) instead of failing. node-pg-migrate
+  // accepts a ClientConfig object (connectionString + ssl) as `databaseUrl`.
+  const dbConn = resolveDbConnection();
+
   const applied = await runner({
-    databaseUrl: env.DATABASE_URL,
+    databaseUrl: dbConn,
     dir: MIGRATIONS_DIR,
     direction,
     // count is only passed when rolling back; exactOptionalPropertyTypes

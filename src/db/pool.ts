@@ -19,28 +19,41 @@ import { env } from '../config/env.js';
 let _pool: pg.Pool | null = null;
 
 /**
+ * Resolve DATABASE_URL into a node-postgres connection config with correct TLS.
+ *
+ * Cloud Postgres (Timescale Cloud, sslmode=require) presents a cert chain that
+ * Node may not trust ("self-signed certificate in certificate chain"). For
+ * non-localhost hosts we enable TLS with relaxed CA verification (still encrypted
+ * in transit) and STRIP `sslmode` from the connection string so the ssl object —
+ * not the connstring keyword — controls TLS. Localhost dev stays plain.
+ *
+ * Shared by getPool() AND src/db/migrate.ts (node-pg-migrate) so BOTH honour the
+ * same TLS handling — otherwise migrations fail against Timescale even when the
+ * app pool connects fine.
+ */
+export function resolveDbConnection(): { connectionString: string; ssl?: pg.PoolConfig["ssl"] } {
+  let ssl: pg.PoolConfig["ssl"];
+  let connectionString = env.DATABASE_URL;
+  try {
+    const u = new URL(env.DATABASE_URL);
+    const host = u.hostname;
+    const isLocal = host === "localhost" || host === "127.0.0.1" || host === "::1";
+    if (!isLocal || /sslmode=require/i.test(env.DATABASE_URL)) {
+      ssl = { rejectUnauthorized: false };
+      u.searchParams.delete("sslmode");
+      connectionString = u.toString();
+    }
+  } catch { /* leave connectionString/ssl as-is */ }
+  return ssl ? { connectionString, ssl } : { connectionString };
+}
+
+/**
  * Returns the singleton pg.Pool, creating it on first call.
  * Max connections: 10 (safe for a single-service Phase 0 deployment).
  */
 export function getPool(): pg.Pool {
   if (_pool === null) {
-    // Cloud Postgres (Timescale Cloud, sslmode=require) presents a cert chain
-    // that local Node may not trust. Enable TLS with relaxed CA verification for
-    // non-localhost hosts (still encrypted in transit); plain for localhost dev.
-    // Newer node-postgres lets a connstring `sslmode` override the ssl object, so
-    // we strip sslmode and let the ssl object control TLS.
-    let ssl: pg.PoolConfig["ssl"];
-    let connStr = env.DATABASE_URL;
-    try {
-      const u = new URL(env.DATABASE_URL);
-      const host = u.hostname;
-      const isLocal = host === "localhost" || host === "127.0.0.1" || host === "::1";
-      if (!isLocal || /sslmode=require/i.test(env.DATABASE_URL)) {
-        ssl = { rejectUnauthorized: false };
-        u.searchParams.delete("sslmode");
-        connStr = u.toString();
-      }
-    } catch { /* leave connStr/ssl as-is */ }
+    const { connectionString: connStr, ssl } = resolveDbConnection();
 
     _pool = new pg.Pool({
       connectionString: connStr,
