@@ -13,32 +13,15 @@ competitors:
     aliases: []
   - name: Talkie
     aliases: []
+# Owner decision 2026-07-11: measure emora in English + Korean ONLY (was 13 langs).
+# The measurement = cartesian(questions × these langs × samples); 2 langs keeps a full
+# emora baseline at ~216 units so it completes in ~2-3 weekly cycles on the free tier
+# (13 langs = 1404 units never finished). loadTemplate upserts these every diagnose run,
+# so this YAML is the durable source of truth — editing it here is what makes it stick.
 languages:
-  - code: de
-    weight: 1
   - code: en
     weight: 1
-  - code: es
-    weight: 1
-  - code: fil
-    weight: 1
-  - code: fr
-    weight: 1
-  - code: id
-    weight: 1
-  - code: ja
-    weight: 1
-  - code: ms
-    weight: 1
-  - code: pt
-    weight: 1
-  - code: th
-    weight: 1
-  - code: vi
-    weight: 1
-  - code: zh
-    weight: 1
-  - code: zh-TW
+  - code: ko
     weight: 1
 questions:
   - text: Welche KI-Chat-Apps ermöglichen unendliches Gedächtnis und Bildgenerierung?
@@ -190,6 +173,6 @@ budget:
   # trends; the weekly_usd_cap is the hard cost backstop. Raise for a deep audit.
   max_models: 1
   max_samples: 2
-  max_languages: 13
+  max_languages: 2
   weekly_usd_cap: 10
   monthly_usd_cap: 35

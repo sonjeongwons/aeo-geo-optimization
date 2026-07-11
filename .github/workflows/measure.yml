@@ -13,8 +13,11 @@ on:
   workflow_dispatch:
     inputs:
       customer:
-        description: customer slug
-        default: emora
+        # Space-separated slug list; smallest-first (see CUSTOMERS below). Default
+        # matches the scheduled cron so a manual dispatch measures BOTH customers,
+        # not just emora (a bare `default: emora` silently skipped smim on dispatch).
+        description: "customer slug(s), space-separated"
+        default: smimdate emora
       grounding_pct:
         description: "% of work-units to ground (0-100)"
         default: "3"
