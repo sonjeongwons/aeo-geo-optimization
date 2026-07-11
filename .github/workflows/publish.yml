@@ -79,12 +79,14 @@ jobs:
         run: |
           set -uo pipefail
           # Per-customer config: slug|customerId|industry|hubRepo|hubBaseUrl|brand
-          # IDs are for the LIVE Timescale DB (NOT a local dev DB): smimdate=37a8f2bd,
-          # emora=5eb8d7ef. (Restored after a local-DB id mixup — the local Postgres
-          # has different customer ids than production Timescale.)
+          # IDs are for the LIVE Timescale DB (verified 2026-07-11 by db slug lookup):
+          #   smimdate = 37a8f2bd  (248 assets, real content)
+          #   emora    = b1d999e5  (canonical `emora` slug + the real 1404-unit recall
+          #                         measurement). NOTE: 5eb8d7ef is `emora-mini`, an
+          #                         ORPHAN — its content+facts were merged INTO b1d999e5.
           CONFIGS=(
             "smimdate|37a8f2bd-97e9-4428-b98a-d892c079e98a|rotation-dating|sonjeongwons/aeo-smim-hub|https://sonjeongwons.github.io/aeo-smim-hub|smim"
-            "emora|5eb8d7ef-41c4-499c-a651-3f96eb75997c|ai-character-chat|sonjeongwons/aeo-owned-net-hub|https://sonjeongwons.github.io/aeo-owned-net-hub|emora"
+            "emora|b1d999e5-c8c1-4f6a-90a3-4d7dc2773ad5|ai-character-chat|sonjeongwons/aeo-owned-net-hub|https://sonjeongwons.github.io/aeo-owned-net-hub|emora"
           )
           for cfg in "${CONFIGS[@]}"; do
             IFS='|' read -r slug cid industry repo baseurl brand <<< "$cfg"

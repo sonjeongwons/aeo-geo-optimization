@@ -18,6 +18,37 @@ matchmaking, ko, smimdate.com). Canonical ids + hubs + constraints: see CLAUDE.m
 - **Data/infra:** owner-directed §7-filtered facts ingested (emora 161, smimdate 17 claim_sources) · SMIM customer onboarded (was missing) · EMORA consolidated to canonical `emora` (stale publish ids fixed — the real cause of "0 generated content") · both live hubs re-rendered (fixed a live raw-markdown-table bug) · GSC/Bing verification files durably emitted to hubs.
 - **Leading indicator (top lever, LIVE):** retrievability — Gemini embedding adapter (`gemini-embedding-001`) + pure scorer + `scripts/score-retrievability.mts`. Verified: EMORA en = 20 queries / 32 passages, **coverage 1.0**, 0 content gaps. Run: `npx tsx scripts/score-retrievability.mts --customer emora --lang en`.
 
+## Production Timescale connected + consolidated (2026-07-11, session 3)
+Owner provided the Timescale password (service `db-aeo-geo`) → local dev now points at
+the LIVE Timescale (`.env` DATABASE_URL, re-encrypted into `secrets/env.enc`). Fixed
+`src/db/pool.ts` for cloud TLS (strip `sslmode`, `ssl:{rejectUnauthorized:false}` for
+non-localhost). **Verified live customer state by slug lookup** (NOT the localhost ids
+that CLAUDE.md used to list):
+- `emora` = **b1d999e5** — canonical (the real 1404-unit recall measurement). Had 0
+  content/facts; measurement runs were stuck `running`.
+- `smimdate` = **37a8f2bd** — 248 content_assets (24 passed), 1 completed measurement.
+- ORPHANS: `emora-mini` **5eb8d7ef** (held emora's content+facts), dangling **f9d13b5c**
+  (smim-style assets, no customer row), `demo` 97c47ce2.
+
+**Consolidation applied to PROD (backup: scratchpad/prod-migrate-backup.json):**
+1. Marked emora's 2 zombie `running` runs `completed` (they had real SMR data — a CI
+   cycle was killed at the job timeout before `finishRun`; emora's n_total=1404 can't
+   finish on free-tier within 75min).
+2. Merged `emora-mini` → `emora`: re-pointed 14 claim_source + 5 content_asset to b1d999e5.
+- **Code hardening:** `email-report.mts pointsFor` now surfaces runs that have a
+  `run_smr_overall` row even if status is still `running` (finalization artifact, not a
+  live run — weekly cron, not a daemon), with `started_at` date fallback. So future
+  timed-out cycles won't hide measured data. `publish.yml` emora id 5eb8d7ef→b1d999e5.
+- **RESULT (E2E verified):** daily email now shows BOTH — subject `… 스밈 언급률 0.0% ·
+  EMORA 언급률 0.0%` (0.0% is honest: brands not yet in Gemini answers, pre-generation).
+
+### Open gaps (next)
+- EMORA email shows "발행 페이지 0개": its owned-net-hub pages are NOT in `url_registry`
+  (pageCount matches by hub URL). SMIM has 8. Register emora hub pages so the count is honest.
+- emora measurement cycle (n_total=1404) never completes on free-tier+75min → each Monday
+  leaves a new zombie run. Options: bound work-units / resume the incomplete runId /
+  reduce the intent matrix. (Email is now resilient to it, but the runs still pile up.)
+
 ## DB status (2026-07-11): RESOLVED — up + kept warm
 Timescale had idle-auto-suspended (Jul 7 → Jul 11); owner RESUMED it in the console.
 End-to-end verified: daily report connected + sent a REAL-data email (subject

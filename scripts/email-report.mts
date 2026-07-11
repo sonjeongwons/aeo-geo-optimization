@@ -84,6 +84,7 @@ async function pointsFor(customerId: string): Promise<Point[]> {
     .leftJoin("run_smr_overall as s", "s.run_id", "r.id")
     .select([
       "r.finished_at",
+      "r.started_at",
       "r.n_total",
       "s.judged_ok",
       "s.brand_hits",
@@ -91,13 +92,25 @@ async function pointsFor(customerId: string): Promise<Point[]> {
       "s.recommendation_hits",
     ] as never)
     .where("r.customer_id", "=", customerId)
-    .where("r.status", "=", "completed")
+    // Report any run that produced measured data: 'completed' runs, plus runs left
+    // in 'running' by a CI cycle killed at the job timeout AFTER judging wrote its
+    // run_smr_overall row (a big customer's cycle can exceed the step timeout before
+    // finishRun marks it completed). Presence of judged_ok = the data is real; the
+    // stuck status is a finalization artifact, not an in-flight measurement (this is
+    // a weekly cron, not a live daemon). Prevents such data from being invisible.
+    .where((eb) =>
+      eb.or([
+        eb("r.status", "=", "completed"),
+        eb("s.judged_ok", "is not", null) as never,
+      ]),
+    )
     .where("r.n_total", ">", 0)
     .orderBy("r.finished_at", "asc")
+    .orderBy("r.started_at", "asc")
     .execute();
   return (rows as never[]).map((x: never) => {
     const r = x as Record<string, unknown>;
-    const d = r["finished_at"] as Date | string | null;
+    const d = (r["finished_at"] ?? r["started_at"]) as Date | string | null;
     return {
       date: d ? String(d instanceof Date ? d.toISOString() : d).slice(0, 10) : "—",
       nTotal: Number(r["n_total"] ?? 0),
