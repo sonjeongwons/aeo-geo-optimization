@@ -211,32 +211,35 @@ function customerSection(c: { name: string }, pts: Point[], pages: number, engin
 }
 
 async function main(): Promise<void> {
-  // Wake a suspended Timescale Cloud DB before querying (idle auto-suspend makes
-  // the first connection time out — retry with backoff).
-  await waitForDb();
   const nowIso = process.env["REPORT_STAMP"] ?? "";
-  const sections: string[] = [];
-  let headlineBits: string[] = [];
-  for (const c of CUSTOMERS) {
-    const db = getDb();
-    const cust = await db.selectFrom("customer").select("id").where("slug", "=", c.slug).executeTakeFirst();
-    if (!cust) {
-      sections.push(`<h2>${c.name}</h2><p style="color:#888">고객 미등록</p>`);
-      continue;
-    }
-    const pts = await pointsFor(cust.id);
-    const pages = await pageCount(c.hub);
-    const engines = await enginesFor(cust.id);
-    sections.push(customerSection(c, pts, pages, engines));
-    if (pts.length > 0) {
-      const latest = pts[pts.length - 1]!;
-      const denom = latest.judged > 0 ? latest.judged : latest.nTotal;
-      headlineBits.push(`${c.name} 언급률 ${fmtPct(pct(latest.mention, denom))}`);
-    }
-  }
+  let subject: string;
+  let html: string;
 
-  const subject = `AEO/GEO 리포트${nowIso ? ` — ${nowIso.slice(0, 10)}` : ""} — ${headlineBits.join(" · ") || "측정 대기"}`;
-  const html = `<!DOCTYPE html><html lang="ko"><head><meta charset="UTF-8"></head>
+  try {
+    // Wake a suspended Timescale Cloud DB before querying (idle auto-suspend
+    // makes the first connection time out — retry with backoff).
+    await waitForDb();
+    const sections: string[] = [];
+    const headlineBits: string[] = [];
+    for (const c of CUSTOMERS) {
+      const db = getDb();
+      const cust = await db.selectFrom("customer").select("id").where("slug", "=", c.slug).executeTakeFirst();
+      if (!cust) {
+        sections.push(`<h2>${c.name}</h2><p style="color:#888">고객 미등록</p>`);
+        continue;
+      }
+      const pts = await pointsFor(cust.id);
+      const pages = await pageCount(c.hub);
+      const engines = await enginesFor(cust.id);
+      sections.push(customerSection(c, pts, pages, engines));
+      if (pts.length > 0) {
+        const latest = pts[pts.length - 1]!;
+        const denom = latest.judged > 0 ? latest.judged : latest.nTotal;
+        headlineBits.push(`${c.name} 언급률 ${fmtPct(pct(latest.mention, denom))}`);
+      }
+    }
+    subject = `AEO/GEO 리포트${nowIso ? ` — ${nowIso.slice(0, 10)}` : ""} — ${headlineBits.join(" · ") || "측정 대기"}`;
+    html = `<!DOCTYPE html><html lang="ko"><head><meta charset="UTF-8"></head>
 <body style="font-family:-apple-system,'Segoe UI',Roboto,'Malgun Gothic',sans-serif;color:#1a1a1a;max-width:720px;margin:0 auto;padding:20px">
   <h1 style="font-size:20px;margin:0 0 4px">AEO/GEO 최적화 리포트</h1>
   <p style="color:#666;font-size:13px;margin:0 0 6px">${nowIso ? nowIso.slice(0, 16).replace("T", " ") + " UTC · " : ""}측정된 AI 답변 모델에서의 브랜드 노출(언급→인용→추천)을 추적합니다. 각 고객 제목 옆에 실제 측정한 엔진을 표기합니다. 각 지표는 판정된 응답 대비 비율이며 95% 신뢰구간을 함께 표시합니다. "전대비"는 직전 측정 대비 변화(pt)입니다.</p>
@@ -244,6 +247,21 @@ async function main(): Promise<void> {
   <hr style="border:none;border-top:1px solid #eee;margin:24px 0 10px">
   <p style="color:#999;font-size:12px">자동 발송 · 게이트(§7) 통과 콘텐츠만 발행 · 측정 데이터 기반. 지표가 0%인 것은 아직 해당 AI 모델 답변에 브랜드가 등장하지 않았다는 뜻이며, 발행 콘텐츠가 크롤링·색인되며 상승하는지 매 사이클 추적합니다. "전대비" 변화는 AI 생태계 전반의 변동(모델 업데이트 등)을 통제하지 않은 관측값이며, 매주 단일 시점 측정이므로 유의미한 주만 선별하지 마세요.</p>
 </body></html>`;
+  } catch (dbErr) {
+    // DB unreachable (Timescale suspended/expired). Still send a DAILY alert
+    // email so the owner is notified instead of getting silence.
+    const msg = dbErr instanceof Error ? dbErr.message : String(dbErr);
+    console.error(`[email-report] DB unavailable — sending alert email: ${msg}`);
+    subject = `⚠ AEO/GEO 리포트 — DB 연결 실패 (Timescale 재개 필요)`;
+    html = `<!DOCTYPE html><html lang="ko"><head><meta charset="UTF-8"></head>
+<body style="font-family:-apple-system,'Segoe UI',Roboto,'Malgun Gothic',sans-serif;color:#1a1a1a;max-width:720px;margin:0 auto;padding:20px">
+  <h1 style="font-size:20px;margin:0 0 6px">⚠ AEO/GEO 리포트 — 데이터베이스 연결 실패</h1>
+  <p style="font-size:14px;color:#b00020">측정 데이터베이스(Timescale Cloud)에 연결하지 못했습니다. 유휴 상태로 <b>일시정지(suspend)</b>됐거나 만료됐을 가능성이 높습니다.</p>
+  <p style="font-size:14px">조치: <b>Timescale Cloud 콘솔</b>에 로그인 → 해당 서비스가 <b>Paused/Suspended</b>인지 확인 → <b>Resume</b> 하세요. 재개되면 다음 리포트부터 정상 데이터가 옵니다.</p>
+  <p style="font-size:12px;color:#888">기술 상세: ${msg}</p>
+  <p style="font-size:12px;color:#999">이 알림은 매일 자동 발송됩니다. DB가 살아있으면 이 자리에 브랜드 노출(언급/인용/추천) 리포트가 표시됩니다.</p>
+</body></html>`;
+  }
 
   await fs.writeFile("report-email.html", html, "utf8");
   // Trailing newline REQUIRED: the CI heredoc `cat report-subject.txt; echo "__EOF__"`
