@@ -14,10 +14,12 @@ on:
     inputs:
       customer:
         # Space-separated slug list; smallest-first (see CUSTOMERS below). Default
-        # matches the scheduled cron so a manual dispatch measures BOTH customers,
-        # not just emora (a bare `default: emora` silently skipped smim on dispatch).
+        # matches the scheduled cron so a manual dispatch measures all active
+        # customers (a bare `default: emora` would silently skip the others).
+        # smim removed from the active roster 2026-09-05 (owner directive) — its
+        # DB rows/hub repo/config are left intact (dormant), not deleted.
         description: "customer slug(s), space-separated"
-        default: unsanpartners smimdate emora
+        default: unsanpartners emora
       grounding_pct:
         description: "% of work-units to ground (0-100)"
         default: "3"
@@ -36,11 +38,11 @@ jobs:
       LOG_LEVEL: info
       # Space-separated list of customer slugs; dispatch input overrides.
       # SMALLEST-FIRST ordering matters: customers are measured sequentially under a
-      # shared 75-min step budget, so a big customer placed first starves the rest
-      # (this is why smim went unmeasured 2026-07-02..07-11 behind emora's 1404-unit
-      # cycle). unsanpartners (~24 units) and smim (~30 units) complete in minutes,
-      # THEN emora consumes the rest of the window and resumes across cycles.
-      CUSTOMERS: ${{ github.event.inputs.customer || 'unsanpartners smimdate emora' }}
+      # shared 75-min step budget, so a big customer placed first starves the rest.
+      # unsanpartners (~24 units) completes in minutes, THEN emora consumes the
+      # rest of the window and resumes across cycles. smim removed from the
+      # active roster 2026-09-05 (owner directive) — not deleted, just paused.
+      CUSTOMERS: ${{ github.event.inputs.customer || 'unsanpartners emora' }}
       # Email report delivery (Gmail SMTP). Set MAIL_USERNAME + MAIL_PASSWORD
       # (a Gmail App Password) secrets to arm; unset → report built but not sent.
       MAIL_USERNAME: ${{ secrets.MAIL_USERNAME }}

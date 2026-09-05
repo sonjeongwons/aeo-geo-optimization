@@ -1,8 +1,8 @@
 -- =============================================================================
--- 0002_hypertables.sql — time-series hypertables
--- Each table is converted with create_hypertable() immediately after CREATE.
--- RESOLVED: no hypertable has a UNIQUE index that omits the partition column.
---           Cross-table checks are handled in app code, NOT DB CHECKs.
+-- 0002_time_series_tables.sql — time-series-shaped tables (PLAIN, not
+-- hypertables — see 2026-09 migration off TimescaleDB Cloud; the (captured_at,
+-- id) composite PK is kept for schema compatibility but no longer partitions
+-- anything).
 --           mention_judgment is DENORMALIZED (status+coords) so SMR aggregates
 --           can run as a SINGLE-TABLE scan / DISTINCT ON view.
 -- =============================================================================
@@ -26,13 +26,6 @@ CREATE TABLE IF NOT EXISTS response_raw (
   provider_meta  jsonb,
   status         text        NOT NULL CHECK (status IN ('ok','not_configured','error','cached')),
   PRIMARY KEY (captured_at, id)
-);
-
-SELECT create_hypertable(
-  'response_raw',
-  'captured_at',
-  chunk_time_interval => INTERVAL '7 days',
-  if_not_exists       => TRUE
 );
 
 CREATE INDEX IF NOT EXISTS ix_resp_customer_time ON response_raw (customer_id, captured_at DESC);
@@ -72,13 +65,6 @@ CREATE TABLE IF NOT EXISTS mention_judgment (
   CONSTRAINT mention_evidence_chk CHECK (brand_mentioned = false OR evidence_quote IS NOT NULL)
 );
 
-SELECT create_hypertable(
-  'mention_judgment',
-  'captured_at',
-  chunk_time_interval => INTERVAL '7 days',
-  if_not_exists       => TRUE
-);
-
 CREATE INDEX IF NOT EXISTS ix_mj_response ON mention_judgment (response_raw_id, captured_at DESC);
 CREATE INDEX IF NOT EXISTS ix_mj_run      ON mention_judgment (run_id);
 CREATE INDEX IF NOT EXISTS ix_mj_decomp   ON mention_judgment (customer_id, model_id, language, question_id, captured_at DESC);
@@ -100,13 +86,6 @@ CREATE TABLE IF NOT EXISTS llm_call (
   cache_hit        boolean     NOT NULL DEFAULT false,
   response_raw_id  uuid,
   PRIMARY KEY (ts, id)
-);
-
-SELECT create_hypertable(
-  'llm_call',
-  'ts',
-  chunk_time_interval => INTERVAL '7 days',
-  if_not_exists       => TRUE
 );
 
 CREATE INDEX IF NOT EXISTS ix_cost_customer_time ON llm_call (customer_id, ts DESC);

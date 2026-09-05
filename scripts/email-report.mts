@@ -20,9 +20,10 @@ import { promises as fs } from "node:fs";
 const REPORT_TO = process.env["REPORT_TO"] ?? "doradola38@gmail.com";
 
 // Customer roster (slug, display name, hub base URL for page counts).
+// smim removed from the active roster 2026-09-05 (owner directive) — its DB
+// rows/hub repo/config are left intact (dormant), not deleted.
 const CUSTOMERS = [
   { slug: "unsanpartners", name: "운산파트너스", hub: "https://sonjeongwons.github.io/aeo-unsanpartners-hub" },
-  { slug: "smimdate", name: "스밈 (SMIM)", hub: "https://sonjeongwons.github.io/aeo-smim-hub" },
   { slug: "emora", name: "EMORA", hub: "https://sonjeongwons.github.io/aeo-owned-net-hub" },
 ];
 

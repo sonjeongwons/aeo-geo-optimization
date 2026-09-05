@@ -35,13 +35,6 @@ CREATE TABLE IF NOT EXISTS security_audit (
   PRIMARY KEY (occurred_at, id)
 );
 
-SELECT create_hypertable(
-  'security_audit',
-  'occurred_at',
-  chunk_time_interval => INTERVAL '30 days',
-  if_not_exists       => TRUE
-);
-
 CREATE INDEX IF NOT EXISTS ix_secaudit_type ON security_audit (event_type, occurred_at DESC);
 CREATE INDEX IF NOT EXISTS ix_secaudit_subj ON security_audit (subject_id, occurred_at DESC);
 

@@ -1,11 +1,11 @@
 -- =============================================================================
 -- 0001_dimensions.sql — plain relational (dimension) tables
--- PostgreSQL 16 + TimescaleDB
--- NOTE: TimescaleDB and pgcrypto extensions are created here so they are
---       available for all subsequent migrations.
+-- Vanilla PostgreSQL (no TimescaleDB extension — see 2026-09 migration off
+-- Timescale Cloud; data volume never justified hypertables/CAGGs/compression,
+-- so response_raw/mention_judgment/llm_call/security_audit are plain tables
+-- and cost_daily (0004_cagg_policy.sql) is a plain view).
 -- =============================================================================
 
-CREATE EXTENSION IF NOT EXISTS timescaledb CASCADE;
 CREATE EXTENSION IF NOT EXISTS pgcrypto;
 
 -- ---------------------------------------------------------------------------

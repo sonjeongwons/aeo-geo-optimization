@@ -79,14 +79,17 @@ jobs:
         run: |
           set -uo pipefail
           # Per-customer config: slug|customerId|industry|hubRepo|hubBaseUrl|brand
-          # IDs are for the LIVE Timescale DB (verified 2026-07-11 by db slug lookup):
-          #   smimdate = 37a8f2bd  (248 assets, real content)
-          #   emora    = b1d999e5  (canonical `emora` slug + the real 1404-unit recall
-          #                         measurement). NOTE: 5eb8d7ef is `emora-mini`, an
-          #                         ORPHAN — its content+facts were merged INTO b1d999e5.
+          # IDs are for the LIVE Neon DB (migrated off Timescale Cloud 2026-09-05
+          # after its free trial ended and the instance was torn down — see
+          # HANDOFF.md "session 4"). Verified by slug lookup on the new DB:
+          #   unsanpartners = 41b57266 (auto-repair-matchmaking, 3rd customer, onboarded 2026-09-05)
+          #   emora         = 768167a5 (canonical `emora` slug, re-onboarded on Neon 2026-09-05;
+          #                              19 legacy hub pages backfilled into url_registry)
+          # smim removed from the active roster 2026-09-05 (owner directive) — its DB
+          # rows/hub repo (sonjeongwons/aeo-smim-hub)/config are left intact, not deleted.
           CONFIGS=(
-            "smimdate|37a8f2bd-97e9-4428-b98a-d892c079e98a|rotation-dating|sonjeongwons/aeo-smim-hub|https://sonjeongwons.github.io/aeo-smim-hub|smim"
-            "emora|b1d999e5-c8c1-4f6a-90a3-4d7dc2773ad5|ai-character-chat|sonjeongwons/aeo-owned-net-hub|https://sonjeongwons.github.io/aeo-owned-net-hub|emora"
+            "unsanpartners|41b57266-1796-4ac5-92a9-395420d891de|auto-repair-matchmaking|sonjeongwons/aeo-unsanpartners-hub|https://sonjeongwons.github.io/aeo-unsanpartners-hub|unsanpartners"
+            "emora|768167a5-6c1f-4d0a-8cf8-33a0e6f4eb41|ai-character-chat|sonjeongwons/aeo-owned-net-hub|https://sonjeongwons.github.io/aeo-owned-net-hub|emora"
           )
           for cfg in "${CONFIGS[@]}"; do
             IFS='|' read -r slug cid industry repo baseurl brand <<< "$cfg"

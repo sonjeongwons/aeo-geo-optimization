@@ -1,18 +1,23 @@
 /**
  * scripts/setup-emora-template.mts — create the ACTIVE "ai-character-chat"
  * industry template + brief_snapshot for EMORA, so gen-content can generate
- * brand-named, fact-bound English off-site content for the emora-mini customer.
+ * brand-named, fact-bound English off-site content for the canonical `emora`
+ * customer (the old `emora-mini` slug was consolidated into `emora` on
+ * 2026-07-11 — see .project-memory/reference-prod-timescale-ids.md).
  *
  * Brief is built from OWNER-ATTESTED facts (config/customers/emora-facts.json,
  * confirmed 2026-07-03). §0: no scraping; §7: gates still run on generated copy.
  * Idempotent-ish: demotes any existing active template for the industry first.
+ * Self-contained (mirrors setup-smim-template.mts): upserts the customer/brand/
+ * language too, so this also works against a brand-new DB (e.g. after the
+ * 2026-09 TimescaleDB → Neon migration).
  *
  * Run: npx tsx scripts/setup-emora-template.mts
  */
 import "../src/config/env.js";
 import { sql } from "kysely";
 import { getDb } from "../src/db/kysely.js";
-import { findCustomerBySlug, insertIndustryTemplate, demoteActiveTemplate } from "../src/db/repo.js";
+import { upsertCustomer, upsertBrand, upsertCustomerLanguage, insertIndustryTemplate, demoteActiveTemplate } from "../src/db/repo.js";
 import { BrandBriefSchema } from "../src/generate/types.js";
 
 const INDUSTRY = "ai-character-chat";
@@ -57,11 +62,10 @@ async function main() {
     process.exit(1);
   }
 
-  const customer = await findCustomerBySlug("emora-mini");
-  if (!customer) {
-    console.error("emora-mini customer not found");
-    process.exit(1);
-  }
+  const customer = await upsertCustomer("emora");
+  await upsertBrand({ customerId: customer.id, name: brief.brandName, aliases: brief.brandAliases });
+  await upsertCustomerLanguage({ customerId: customer.id, language: "en", weight: 1.0 });
+  console.log(`emora customer ready: ${customer.id}`);
 
   await demoteActiveTemplate(INDUSTRY);
 
@@ -86,7 +90,7 @@ async function main() {
     .execute();
 
   console.log(`active industry_template '${INDUSTRY}' created: ${id}`);
-  console.log(`emora-mini customer id: ${customer.id}`);
+  console.log(`emora customer id: ${customer.id}`);
   await getDb().destroy();
 }
 
