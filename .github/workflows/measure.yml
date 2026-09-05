@@ -17,7 +17,7 @@ on:
         # matches the scheduled cron so a manual dispatch measures BOTH customers,
         # not just emora (a bare `default: emora` silently skipped smim on dispatch).
         description: "customer slug(s), space-separated"
-        default: smimdate emora
+        default: unsanpartners smimdate emora
       grounding_pct:
         description: "% of work-units to ground (0-100)"
         default: "3"
@@ -38,9 +38,9 @@ jobs:
       # SMALLEST-FIRST ordering matters: customers are measured sequentially under a
       # shared 75-min step budget, so a big customer placed first starves the rest
       # (this is why smim went unmeasured 2026-07-02..07-11 behind emora's 1404-unit
-      # cycle). smim (~30 units) completes in minutes, THEN emora consumes the rest of
-      # the window and resumes across cycles.
-      CUSTOMERS: ${{ github.event.inputs.customer || 'smimdate emora' }}
+      # cycle). unsanpartners (~24 units) and smim (~30 units) complete in minutes,
+      # THEN emora consumes the rest of the window and resumes across cycles.
+      CUSTOMERS: ${{ github.event.inputs.customer || 'unsanpartners smimdate emora' }}
       # Email report delivery (Gmail SMTP). Set MAIL_USERNAME + MAIL_PASSWORD
       # (a Gmail App Password) secrets to arm; unset → report built but not sent.
       MAIL_USERNAME: ${{ secrets.MAIL_USERNAME }}

@@ -67,6 +67,20 @@ const BRANDS: Record<string, HubBrand> = {
     metaDescription:
       "스밈에 대한 안내 페이지 — 검증된 회원만 참여하는 로테이션 소개팅 서비스. 매주 금·토·일 서울, 매니저 직접 검수.",
   },
+  unsanpartners: {
+    htmlLang: "ko",
+    orgName: "운산파트너스",
+    official: "https://unsanpartners.kr",
+    sameAs: ["https://unsanpartners.kr"],
+    orgDescription:
+      "28년 정비 노하우를 바탕으로 차주·영업 파트너·정비소를 연결하는 자동차 정비 중개 플랫폼. 입고·견적·수리·정산을 자동화합니다.",
+    h1: "운산파트너스 — 자동차 정비 중개 플랫폼",
+    introHtml:
+      "운산파트너스는 28년 정비 노하우를 바탕으로 차주·영업 파트너·정비소를 연결하는 자동차 정비\n       중개 플랫폼입니다. 차량 입고부터 견적·수리·정산까지 자동화합니다. 공식 사이트:",
+    titleTag: "운산파트너스 — 자동차 정비 중개 플랫폼: 안내",
+    metaDescription:
+      "운산파트너스에 대한 안내 페이지 — 28년 정비 노하우 기반 자동차 정비 중개 플랫폼. 차주·영업 파트너·정비소 연결, 입고·견적·수리·정산 자동화.",
+  },
 };
 const BRAND: HubBrand = BRANDS[(process.env.HUB_BRAND ?? "emora").toLowerCase()] ?? BRANDS.emora!;
 const EMORA_OFFICIAL = BRAND.official;

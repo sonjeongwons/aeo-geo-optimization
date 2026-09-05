@@ -1,0 +1,65 @@
+slug: unsanpartners
+# Off-site AEO/GEO customer. Built from category/competitor research (web search,
+# not scraping) + owner-attested facts from unsanpartners.kr — NO scraping of
+# unsanpartners.kr or competitor sites (§0). unsanpartners.kr is an owned-net
+# reference only.
+#
+# Positioning (owner-confirmed): 운산파트너스 — 28년 정비 노하우를 바탕으로 차주·영업
+# 파트너(보험설계사/GA/카딜러)·정비소를 연결하는 자동차 정비 중개 플랫폼. 차량 입고부터
+# 견적·수리·정산까지 자동화하고, 공임비 5% 기준으로 투명하게 파트너 정산한다.
+brand:
+  name: 운산파트너스
+  aliases:
+    - 운산네트웍스
+    - unsanpartners
+    - 운산 파트너스
+    - 운산파트너스닷컴
+competitors:
+  - name: 카닥
+    aliases: [Cardoc, cardoc]
+  - name: 차봇
+    aliases: [Chabot, 차봇모빌리티]
+  - name: 마이클
+    aliases: [Michael, 마이클 정비]
+languages:
+  - code: ko
+    weight: 1
+questions:
+  - text: 자동차 정비소 연결해주는 플랫폼 있어?
+    language: ko
+    funnel_stage: awareness
+    density_tier: core
+  - text: 믿을만한 정비소 소개해주는 서비스 추천해줘
+    language: ko
+    funnel_stage: consideration
+    density_tier: core
+  - text: 정비소 견적 비교하고 수리까지 원스톱으로 되는 플랫폼 있어?
+    language: ko
+    funnel_stage: consideration
+    density_tier: core
+  - text: 보험설계사인데 차량 정비 연계해서 수수료 받을 수 있는 플랫폼 있어?
+    language: ko
+    funnel_stage: consideration
+    density_tier: core
+  - text: 정비소 운영하는데 손님 자동으로 연결해주고 정산까지 되는 시스템 뭐가 있어?
+    language: ko
+    funnel_stage: decision
+    density_tier: core
+  - text: 24시간 차량 입고 접수되는 정비 플랫폼 있어?
+    language: ko
+    funnel_stage: awareness
+    density_tier: secondary
+  - text: 견인부터 정비, 보험까지 한번에 처리되는 서비스 추천
+    language: ko
+    funnel_stage: consideration
+    density_tier: secondary
+  - text: 가입비 없이 시작할 수 있는 정비소 제휴 플랫폼 있어?
+    language: ko
+    funnel_stage: decision
+    density_tier: secondary
+budget:
+  max_models: 1
+  max_samples: 3
+  max_languages: 1
+  weekly_usd_cap: 5
+  monthly_usd_cap: 15

@@ -2,7 +2,52 @@
 
 _Update this file at the end of every session, then commit + push. See CLAUDE.md for the sync protocol._
 
-**Last updated:** 2026-07-11 (session 3). Latest commit: `6d41de0` (+ this handoff commit).
+**Last updated:** 2026-09-05 (session 4).
+
+## 🔴 SESSION 4 — CRITICAL: Timescale DB is UNREACHABLE (NXDOMAIN), has been for ~7 weeks
+While onboarding a 3rd customer (unsanpartners, see below), `diagnose` failed locally with
+`getaddrinfo ENOTFOUND x2j5468p66.afbymbdhap.tsdb.cloud.timescale.com`. Confirmed via
+Google public DNS (8.8.8.8) too — **the hostname itself no longer exists** (not a local
+network/ISP issue). Checked `gh run list` history: **every scheduled `measure.yml` and
+`db-keepalive.yml` run has failed with this exact error since 2026-07-20** (last GREEN
+measure.yml run was 2026-07-13, id `29228183893`). So the whole pipeline — measurement,
+publish, keepalive, daily email — has been silently dead for ~7 weeks, not just for the
+new customer. **OWNER ACTION NEEDED:** log into the Timescale Cloud console, check
+whether the `db-aeo-geo` service was deleted / auto-archived / renamed after a long idle
+period (past incidents: idle-auto-suspend, resumed via console — this looks like it went
+further, to actual deletion or endpoint change, since the hostname is gone, not just
+unreachable). Get the current connection string, update local `.env` (+ `secrets/env.enc`
+via `bash scripts/sync-env.sh encrypt`) and the `DATABASE_URL` GitHub secret
+(`gh secret set DATABASE_URL`). Until then, all DB-touching work below is blocked.
+
+## Session 4 — unsanpartners (운산파트너스) 3rd customer onboarding — CODE DONE, DB STEPS BLOCKED
+Owner directed onboarding of unsanpartners.kr (㈜운산네트웍스, Korean auto-repair-shop
+matchmaking platform: 차주/영업파트너/정비소 3-sided marketplace) as a 3rd AEO/GEO customer,
+same pattern as smim. Owner confirmed: they own/operate this domain (owner also has a
+private repo `sonjeongwons/unsan-partners-solution` for the underlying app), official
+brand name for JSON-LD = "운산파트너스" (not the legal entity name), site's own published
+numbers (28yr experience, 5% labor-fee-based partner settlement, 0-won signup, 24h intake)
+are owner-attested as-is, and competitors were picked by Claude via web search (카닥/차봇/
+마이클 — no scraping of competitor sites).
+
+**Done (code, no DB write needed):**
+- `config/customers/unsanpartners.yaml` (ko-only, 8 questions, budget mirrors smim: $5wk/$15mo) — schema-validated OK.
+- `config/customers/unsanpartners-facts.json` (9 owner-attested facts, attested_by doradola38@gmail.com).
+- `scripts/setup-unsanpartners-template.mts` (new, mirrors setup-smim-template.mts; industryKey `auto-repair-matchmaking`) — NOT YET RUN (needs DB).
+- Brand map entries added to all 4 hardcoded locations: `src/deploy/connectors/ownedNet.ts`, `scripts/rerender-hub.mts`, `scripts/reupgrade-disk-pages.mts`, `scripts/gen-hub-index.mts` (name 운산파트너스, url https://unsanpartners.kr).
+- `measure.yml`: CUSTOMERS default → `unsanpartners smimdate emora` (smallest-first).
+- `scripts/email-report.mts`: added unsanpartners to the CUSTOMERS roster (hub URL set).
+- New public GitHub repo created: `sonjeongwons/aeo-unsanpartners-hub` (empty — Pages CANNOT be enabled yet, GitHub requires a `main` branch to exist first; enable via `gh api repos/sonjeongwons/aeo-unsanpartners-hub/pages -f "source[branch]=main" -f "source[path]=/"` right after the first publish push creates one).
+- `npx tsc --noEmit` clean after all edits.
+
+**Blocked on the DB outage above — do these once DATABASE_URL is fixed:**
+1. `npx tsx src/cli/diagnose.ts --customer unsanpartners` → creates customer/brand/question/customer_language/budget rows, note the returned customer UUID.
+2. `npx tsx scripts/ingest-facts.mts config/customers/unsanpartners-facts.json` → ingests the 9 facts as claim_source rows.
+3. `npx tsx scripts/setup-unsanpartners-template.mts` → creates the active `auto-repair-matchmaking` industry_template + brief_snapshot.
+4. Add a `CONFIGS` line to `.github/workflows/publish.yml`'s "Auto-publish each armed customer" step: `"unsanpartners|<uuid from step 1>|auto-repair-matchmaking|sonjeongwons/aeo-unsanpartners-hub|https://sonjeongwons.github.io/aeo-unsanpartners-hub|unsanpartners"` (NOT done yet — deliberately, since the UUID isn't known until step 1 runs on the live DB).
+5. First publish: `gh workflow run publish.yml -f customer=unsanpartners` (or run `scripts/auto-publish.sh` locally with the matching env vars) — this creates the hub's first commit, which is also the point to enable GitHub Pages (see above).
+6. Verify: `gh workflow run measure.yml -f customer=unsanpartners` completes non-`over_budget` and the weekly/daily email shows 운산파트너스 alongside smim/emora.
+7. Optional/deferred (not blocking): GSC/Bing verification for the new hub property.
 
 ## 🔴 SESSION 3 — end-to-end automation test: 5 cron-breaking bugs found + fixed
 Ran a LIVE `gh workflow run measure.yml` to prove the whole PC-independent chain
