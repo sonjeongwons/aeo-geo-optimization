@@ -145,52 +145,79 @@ function extractUsage(
 // GeminiAdapter
 // ---------------------------------------------------------------------------
 
-// Free-tier / burst rate-limit backoff. The content-generation path has NO
-// retry, so a single 429/RESOURCE_EXHAUSTED fails the unit (validation_failed).
-// On rate-limit errors we wait and retry (the per-minute free-tier quota resets),
-// degrading free-tier keys to SLOWER rather than FAILING. Bounded so a hard
-// daily-quota exhaustion still gives up instead of hanging forever.
+// Free-tier / burst rate-limit backoff + multi-key rotation. The
+// content-generation path has NO retry at the caller level, so a single
+// 429/RESOURCE_EXHAUSTED must be absorbed here or it fails the unit
+// (validation_failed).
+//
+// With ONE key: on rate-limit, wait and retry (the per-minute free-tier
+// quota resets), degrading a free-tier key to SLOWER rather than FAILING.
+// With MULTIPLE keys (GEMINI_API_KEYS, from separate Google Cloud
+// projects/accounts — quota is per-project, not per-key): on rate-limit,
+// retry on the NEXT key IMMEDIATELY (no wait) before falling back to a
+// backoff wait once every key is rate-limited in the same round. This
+// multiplies effective RPM by the number of distinct-project keys instead
+// of just spending the wait budget on one key.
+// Bounded so a hard daily-quota exhaustion (on every key) still gives up
+// instead of hanging forever.
 const _RL_RE = /\brate[\s_-]?limit|\b429\b|\bquota\b|resource[\s_-]?exhausted|too many requests/i;
 const RL_MAX_RETRIES = Number(process.env["GEMINI_RATE_LIMIT_RETRIES"] ?? "3");
 const RL_BASE_MS = Number(process.env["GEMINI_RATE_LIMIT_BASE_MS"] ?? "20000");
-async function retryOnRateLimit<T>(fn: () => Promise<T>): Promise<T> {
-  let lastErr: unknown;
-  for (let attempt = 0; attempt <= RL_MAX_RETRIES; attempt++) {
-    try {
-      return await fn();
-    } catch (err) {
-      lastErr = err;
-      const msg = err instanceof Error ? err.message : String(err);
-      if (attempt >= RL_MAX_RETRIES || !_RL_RE.test(msg)) throw err;
-      const waitMs = Math.min(60_000, RL_BASE_MS * 2 ** attempt);
-      await new Promise((r) => setTimeout(r, waitMs));
-    }
-  }
-  throw lastErr;
-}
 
 export class GeminiAdapter implements ProviderAdapter {
   readonly provider = "gemini";
   readonly modality: Modality = "chat";
   readonly capabilities: SurfaceCapability[] = ["generate", "judge", "structured"];
 
-  private readonly _apiKey: string | undefined;
-  private _client: GoogleGenAI | null = null;
+  private readonly _apiKeys: string[];
+  private readonly _clients: (GoogleGenAI | null)[];
+  private _cursor = 0;
 
-  constructor(apiKey: string | undefined) {
-    this._apiKey = apiKey;
+  constructor(apiKeys: string | string[] | undefined) {
+    const list = Array.isArray(apiKeys) ? apiKeys : apiKeys ? [apiKeys] : [];
+    this._apiKeys = list.filter((k) => k.length > 0);
+    this._clients = this._apiKeys.map(() => null);
   }
 
   get status(): "ready" | "stub" | "not_configured" {
-    return this._apiKey ? "ready" : "not_configured";
+    return this._apiKeys.length > 0 ? "ready" : "not_configured";
   }
 
-  private _getClient(): GoogleGenAI | null {
-    if (!this._apiKey) return null;
-    if (!this._client) {
-      this._client = new GoogleGenAI({ apiKey: this._apiKey });
+  private _clientAt(i: number): GoogleGenAI {
+    const existing = this._clients[i];
+    if (existing) return existing;
+    const client = new GoogleGenAI({ apiKey: this._apiKeys[i]! });
+    this._clients[i] = client;
+    return client;
+  }
+
+  /**
+   * Call `fn` against one of the configured keys, rotating round-robin and
+   * failing over to the next key on a rate-limit error before waiting.
+   * Single-key deployments behave exactly as the old retryOnRateLimit did.
+   */
+  private async _call<T>(fn: (client: GoogleGenAI) => Promise<T>): Promise<T> {
+    const n = this._apiKeys.length;
+    let lastErr: unknown;
+    for (let round = 0; round <= RL_MAX_RETRIES; round++) {
+      for (let i = 0; i < n; i++) {
+        const idx = (this._cursor + i) % n;
+        try {
+          const result = await fn(this._clientAt(idx));
+          this._cursor = (idx + 1) % n;
+          return result;
+        } catch (err) {
+          lastErr = err;
+          const msg = err instanceof Error ? err.message : String(err);
+          if (!_RL_RE.test(msg)) throw err;
+          // Rate-limited on this key — try the next key immediately, no wait.
+        }
+      }
+      if (round >= RL_MAX_RETRIES) break;
+      const waitMs = Math.min(60_000, RL_BASE_MS * 2 ** round);
+      await new Promise((r) => setTimeout(r, waitMs));
     }
-    return this._client;
+    throw lastErr;
   }
 
   // -------------------------------------------------------------------------
@@ -198,8 +225,7 @@ export class GeminiAdapter implements ProviderAdapter {
   // -------------------------------------------------------------------------
 
   async generate(req: GenerateRequest): Promise<GenerateResult> {
-    const client = this._getClient();
-    if (!client) {
+    if (this._apiKeys.length === 0) {
       return { ok: false, code: NOT_CONFIGURED };
     }
 
@@ -209,7 +235,7 @@ export class GeminiAdapter implements ProviderAdapter {
     const grounded = req.grounded === true || process.env["GEMINI_GROUNDING"] === "on";
 
     try {
-      const response = await retryOnRateLimit(() => client.models.generateContent({
+      const response = await this._call((client) => client.models.generateContent({
         model: req.modelId,
         contents: req.prompt,
         config: {
@@ -254,8 +280,7 @@ export class GeminiAdapter implements ProviderAdapter {
   // -------------------------------------------------------------------------
 
   async judge(req: JudgeRequest): Promise<JudgeResult> {
-    const client = this._getClient();
-    if (!client) {
+    if (this._apiKeys.length === 0) {
       return { ok: false, code: NOT_CONFIGURED };
     }
 
@@ -269,9 +294,11 @@ export class GeminiAdapter implements ProviderAdapter {
 
     const geminiSchema = zodToGeminiSchema(JudgeVerdictSchema);
 
+    const call = this._call.bind(this);
+
     // First attempt: preferred model (cheap)
     const firstResult = await _callJudge(
-      client,
+      call,
       req.preferredModelId,
       systemPrompt,
       userPrompt,
@@ -287,7 +314,7 @@ export class GeminiAdapter implements ProviderAdapter {
       req.escalationModelId !== req.preferredModelId
     ) {
       const escalationResult = await _callJudge(
-        client,
+        call,
         req.escalationModelId,
         systemPrompt,
         userPrompt,
@@ -314,15 +341,14 @@ export class GeminiAdapter implements ProviderAdapter {
   async generateStructured<T extends z.ZodTypeAny>(
     req: GenerateStructuredRequest<T>
   ): Promise<GenerateStructuredResult<z.infer<T>>> {
-    const client = this._getClient();
-    if (!client) {
+    if (this._apiKeys.length === 0) {
       return { ok: false, code: NOT_CONFIGURED };
     }
 
     const geminiSchema = zodToGeminiSchema(req.schema);
 
     try {
-      const response = await retryOnRateLimit(() => client.models.generateContent({
+      const response = await this._call((client) => client.models.generateContent({
         model: req.modelId,
         contents: req.prompt,
         config: {
@@ -390,14 +416,14 @@ export class GeminiAdapter implements ProviderAdapter {
 // ---------------------------------------------------------------------------
 
 async function _callJudge(
-  client: GoogleGenAI,
+  call: <T>(fn: (client: GoogleGenAI) => Promise<T>) => Promise<T>,
   modelId: string,
   systemPrompt: string,
   userPrompt: string,
   geminiSchema: Record<string, unknown>
 ): Promise<JudgeResult> {
   try {
-    const response = await retryOnRateLimit(() => client.models.generateContent({
+    const response = await call((client) => client.models.generateContent({
       model: modelId,
       contents: userPrompt,
       config: {
@@ -535,9 +561,10 @@ function _mapJudgeError(err: unknown, modelId: string): JudgeResult {
 // ---------------------------------------------------------------------------
 
 /**
- * Create a GeminiAdapter.
- * apiKey=undefined → adapter.status='not_configured', all calls return NOT_CONFIGURED.
+ * Create a GeminiAdapter. Accepts a single key (back-compat) or an array of
+ * keys to rotate across (see GEMINI_API_KEYS / geminiApiKeys() in config/env.ts).
+ * apiKey=undefined/[] → adapter.status='not_configured', all calls return NOT_CONFIGURED.
  */
-export function makeGeminiAdapter(apiKey: string | undefined): GeminiAdapter {
+export function makeGeminiAdapter(apiKey: string | string[] | undefined): GeminiAdapter {
   return new GeminiAdapter(apiKey);
 }

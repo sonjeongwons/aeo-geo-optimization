@@ -12,6 +12,7 @@
 
 import { config as loadDotenv } from 'dotenv';
 import { z } from 'zod';
+import { parseApiKeyList } from './apiKeys.js';
 
 // Load .env if present (no-op in production where vars are injected)
 loadDotenv();
@@ -30,6 +31,18 @@ export const envSchema = z.object({
   // ---- Provider keys (all optional) ----
   // GEMINI_API_KEY is the only key needed for real monitoring in Phase 0
   GEMINI_API_KEY: z.string().optional(),
+  // GEMINI_API_KEYS: optional comma-separated list of MULTIPLE Gemini keys
+  // (from separate Google Cloud projects/accounts — free-tier quota is
+  // per-project, not per-key, so keys from the SAME project don't add
+  // throughput). When set, GeminiAdapter round-robins across all of them and,
+  // on a 429/rate-limit, retries on the NEXT key immediately instead of
+  // waiting — multiplying effective RPM by the number of distinct-project
+  // keys. Falls back to the single GEMINI_API_KEY when unset (see
+  // geminiApiKeys() below).
+  GEMINI_API_KEYS: z
+    .string()
+    .optional()
+    .transform((val) => parseApiKeyList(val)),
   OPENAI_API_KEY: z.string().optional(),
   ANTHROPIC_API_KEY: z.string().optional(),
   PERPLEXITY_API_KEY: z.string().optional(),
@@ -179,11 +192,21 @@ export const env = _parseResult.data;
 export type Env = z.infer<typeof envSchema>;
 
 /**
- * Returns true when GEMINI_API_KEY is set to a non-empty string.
+ * Resolved list of Gemini API keys to rotate across: GEMINI_API_KEYS when
+ * set (comma-separated), else the single GEMINI_API_KEY wrapped in a
+ * 1-element array, else empty.
+ */
+export function geminiApiKeys(): string[] {
+  if (env.GEMINI_API_KEYS.length > 0) return env.GEMINI_API_KEYS;
+  return env.GEMINI_API_KEY ? [env.GEMINI_API_KEY] : [];
+}
+
+/**
+ * Returns true when at least one Gemini API key is configured.
  * Used by the provider registry's readiness() check.
  */
 export function isGeminiConfigured(): boolean {
-  return typeof env.GEMINI_API_KEY === 'string' && env.GEMINI_API_KEY.length > 0;
+  return geminiApiKeys().length > 0;
 }
 
 /**

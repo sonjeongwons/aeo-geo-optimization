@@ -22,7 +22,7 @@
 
 import { fileURLToPath } from "node:url";
 import "../config/env.js";
-import { env } from "../config/env.js";
+import { env, geminiApiKeys } from "../config/env.js";
 import {
   listContentAssetsForSet,
   listContentAssetsForDedup,
@@ -171,14 +171,14 @@ async function main(): Promise<void> {
   // Using defaultContentGateRegistry (no-adapter) meant the §7#7 claim
   // extraction pass never ran, so every claims-bearing asset was permanently
   // routed to needs_human instead of being verifiable to 'passed'.
-  const apiKey = env.GEMINI_API_KEY;
-  if (!apiKey) {
+  const apiKeys = geminiApiKeys();
+  if (apiKeys.length === 0) {
     process.stderr.write(
       "[gate-content] WARNING: GEMINI_API_KEY is not set — " +
         "claimVerificationGate will fail closed (needs_human) for claims-bearing assets.\n",
     );
   }
-  const geminiAdapter = makeGeminiAdapter(apiKey);
+  const geminiAdapter = makeGeminiAdapter(apiKeys);
   const productionGateRegistry = buildProductionContentGateRegistry({
     adapter: geminiAdapter,
     ledger: dbLedger,

@@ -17,6 +17,7 @@ import { makeGeminiAdapter } from "./gemini.js";
 import { makePerplexityAdapter, makeOpenAiAdapter } from "./openaiCompat.js";
 import { makeStubAdapter } from "./stub.js";
 import { buildSurfaceRegistry } from "../surfaces/registry.js";
+import { parseApiKeyList } from "../config/apiKeys.js";
 import type { ProviderAdapter, ProviderReadiness } from "./types.js";
 
 // ---------------------------------------------------------------------------
@@ -86,7 +87,13 @@ export function buildRegistry(
     let adapter: ProviderAdapter;
 
     if (def.kind === "gemini") {
-      adapter = makeGeminiAdapter(env[def.envKey]);
+      // GEMINI_API_KEYS (comma-separated, multiple projects/accounts) takes
+      // priority over the single GEMINI_API_KEY — see geminiApiKeys() in
+      // config/env.ts (mirrored here since this fn takes a raw env map, not
+      // the parsed Env, so tests can override without touching process.env).
+      const multiKeys = parseApiKeyList(env["GEMINI_API_KEYS"]);
+      const keys = multiKeys.length > 0 ? multiKeys : env[def.envKey] ? [env[def.envKey]!] : [];
+      adapter = makeGeminiAdapter(keys);
     } else if (def.kind === "perplexity") {
       adapter = makePerplexityAdapter(env[def.envKey]);
     } else if (def.kind === "openai") {

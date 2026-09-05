@@ -31,7 +31,7 @@
 
 import { fileURLToPath } from "node:url";
 import "../config/env.js"; // side-effect: load .env + fail fast
-import { env } from "../config/env.js";
+import { env, geminiApiKeys } from "../config/env.js";
 import { makeGeminiAdapter } from "../providers/gemini.js";
 import {
   getLatestActiveTemplate,
@@ -423,10 +423,10 @@ async function main(): Promise<void> {
   process.stderr.write(`[gen-content] Created content_set id=${contentSetId}\n`);
 
   // ---- Build Gemini adapter ------------------------------------------------
-  const apiKey = env.GEMINI_API_KEY;
-  const adapter = makeGeminiAdapter(apiKey);
+  const apiKeys = geminiApiKeys();
+  const adapter = makeGeminiAdapter(apiKeys);
 
-  if (!apiKey) {
+  if (apiKeys.length === 0) {
     process.stderr.write(
       "[gen-content] WARNING: GEMINI_API_KEY is not set — generation will return ok:false.\n",
     );

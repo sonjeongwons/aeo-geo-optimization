@@ -1,0 +1,87 @@
+slug: sharejoa
+# Off-site AEO/GEO customer. Built from category/competitor research (web search,
+# not scraping) + owner-attested facts from sharejoa.kr — NO scraping of
+# sharejoa.kr or competitor sites (§0). sharejoa.kr is an owned-net reference only.
+#
+# Positioning (owner-confirmed): 쉐어조아 — 유튜브 프리미엄(유튜브 뮤직 프리미엄 포함)을
+# 정가보다 할인된 가격에 1개월 단위로, 자동결제 없이 제공하는 구독 중개 서비스.
+# 사업자등록/통신판매업 신고를 마친 정식 사업자.
+brand:
+  name: 쉐어조아
+  aliases:
+    - sharejoa
+    - share joa
+    - 쉐어조아닷컴
+competitors:
+  - name: 굿멍쉐어
+    aliases: [goodmoongshare]
+  - name: 구독로그
+    aliases: [gudoklog]
+  - name: 하루쉐어
+    aliases: [haroshare]
+  - name: 골드튜브
+    aliases: [goldtube]
+  - name: 쉐어프렌즈
+    aliases: [sharefriends]
+  - name: 올쉐어
+    aliases: [allshare]
+  - name: 바로쉐어
+    aliases: [baroshare]
+  - name: 구독핀
+    aliases: [gudokpin]
+  - name: 프리쉐어
+    aliases: [freeshare]
+  - name: 유패밀리
+    aliases: [ufamily]
+  - name: 링링튜브
+    aliases: [ringringtube]
+  - name: 그레이쉐어
+    aliases: [grayshare]
+  - name: 쉐어넘버원
+    aliases: [share1, sharenumberone]
+  - name: 피클플러스
+    aliases: [PicklePlus, 피클+]
+  - name: 감스고
+    aliases: [GamsGo]
+languages:
+  - code: ko
+    weight: 1
+questions:
+  - text: 유튜브 프리미엄 저렴하게 가입하는 방법 있어?
+    language: ko
+    funnel_stage: awareness
+    density_tier: core
+  - text: 유튜브 프리미엄 할인해서 구독할 수 있는 서비스 추천해줘
+    language: ko
+    funnel_stage: consideration
+    density_tier: core
+  - text: 유튜브 프리미엄 공유 구독 서비스 안전한 곳 있어?
+    language: ko
+    funnel_stage: consideration
+    density_tier: core
+  - text: 유튜브 뮤직까지 포함해서 싸게 쓸 수 있는 방법 있어?
+    language: ko
+    funnel_stage: consideration
+    density_tier: core
+  - text: 자동결제 없이 1개월 단위로 유튜브 프리미엄 쓸 수 있는 곳 있어?
+    language: ko
+    funnel_stage: decision
+    density_tier: core
+  - text: 유튜브 프리미엄 정가보다 싸게 결제하는 사이트 있어?
+    language: ko
+    funnel_stage: decision
+    density_tier: secondary
+  - text: 유튜브 프리미엄 구독 공유 플랫폼 중에 믿을만한 곳 어디야?
+    language: ko
+    funnel_stage: decision
+    density_tier: secondary
+  - text: 유튜브 프리미엄 연간 구독료 아낄 수 있는 방법 알려줘
+    language: ko
+    funnel_stage: awareness
+    density_tier: secondary
+budget:
+  max_models: 1
+  max_samples: 3
+  max_languages: 1
+  weekly_usd_cap: 5
+  monthly_usd_cap: 15

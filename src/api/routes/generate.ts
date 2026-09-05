@@ -46,7 +46,7 @@ import {
   type MaterializePort,
   type MaterializeCtx,
 } from "../../cli/reviewTemplate.js";
-import { env } from "../../config/env.js";
+import { env, geminiApiKeys } from "../../config/env.js";
 import type { LedgerPort } from "../../generate/diagnose.js";
 import type { z } from "zod";
 import type { GenerateStructuredRequest } from "../../providers/types.js";
@@ -247,8 +247,8 @@ export const registerGenerateRoutes: FastifyPluginAsync = async (
       }
 
       // GEMINI_API_KEY check
-      const apiKey = env.GEMINI_API_KEY;
-      if (!apiKey && !industry) {
+      const apiKeys = geminiApiKeys();
+      if (apiKeys.length === 0 && !industry) {
         return reply.status(503).send({
           error:
             "GEMINI_API_KEY is not configured and no industry fallback was supplied. " +
@@ -274,7 +274,7 @@ export const registerGenerateRoutes: FastifyPluginAsync = async (
       }
 
       // Build adapter
-      const adapter = makeGeminiAdapter(apiKey);
+      const adapter = makeGeminiAdapter(apiKeys);
 
       log.info(
         { url, industry, customer },
@@ -380,8 +380,8 @@ export const registerGenerateRoutes: FastifyPluginAsync = async (
         });
       }
 
-      const apiKey = env.GEMINI_API_KEY;
-      if (!apiKey) {
+      const apiKeys = geminiApiKeys();
+      if (apiKeys.length === 0) {
         return reply.status(503).send({
           error:
             "GEMINI_API_KEY is not configured. " +
@@ -417,7 +417,7 @@ export const registerGenerateRoutes: FastifyPluginAsync = async (
         });
       }
 
-      const adapter = makeGeminiAdapter(apiKey);
+      const adapter = makeGeminiAdapter(apiKeys);
 
       log.info(
         { url, industry, customer, total: genOptions.requestedTotal },

@@ -81,6 +81,20 @@ const BRANDS: Record<string, HubBrand> = {
     metaDescription:
       "운산파트너스에 대한 안내 페이지 — 28년 정비 노하우 기반 자동차 정비 중개 플랫폼. 차주·영업 파트너·정비소 연결, 입고·견적·수리·정산 자동화.",
   },
+  sharejoa: {
+    htmlLang: "ko",
+    orgName: "쉐어조아",
+    official: "https://sharejoa.kr",
+    sameAs: ["https://sharejoa.kr"],
+    orgDescription:
+      "유튜브 프리미엄(유튜브 뮤직 프리미엄 포함)을 정가보다 할인된 가격에 1개월 단위로, 자동결제 없이 제공하는 구독 중개 서비스.",
+    h1: "쉐어조아 — 유튜브 프리미엄 할인 구독",
+    introHtml:
+      "쉐어조아는 유튜브 프리미엄(유튜브 뮤직 프리미엄 포함)을 정가보다 할인된 가격에\n       1개월 단위로, 자동결제 없이 제공하는 구독 중개 서비스입니다. 공식 사이트:",
+    titleTag: "쉐어조아 — 유튜브 프리미엄 할인 구독: 안내",
+    metaDescription:
+      "쉐어조아에 대한 안내 페이지 — 유튜브 프리미엄을 할인가에 1개월 단위, 자동결제 없이 제공하는 구독 중개 서비스.",
+  },
 };
 const BRAND: HubBrand = BRANDS[(process.env.HUB_BRAND ?? "emora").toLowerCase()] ?? BRANDS.emora!;
 const EMORA_OFFICIAL = BRAND.official;

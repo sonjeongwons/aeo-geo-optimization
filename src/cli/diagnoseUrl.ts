@@ -32,7 +32,7 @@
  */
 
 import "../config/env.js"; // side-effect: load .env + fail fast on missing DATABASE_URL
-import { env } from "../config/env.js";
+import { env, geminiApiKeys } from "../config/env.js";
 import { makeGeminiAdapter } from "../providers/gemini.js";
 import { diagnose } from "../generate/diagnose.js";
 import { createQgenBudget, QgenGlobalCapExceededError } from "../cost/qgenBudget.js";
@@ -154,9 +154,9 @@ async function main(): Promise<void> {
   // If no API key AND no industry, we cannot produce any brief.
   // If no API key BUT an industry was given, we let diagnose() handle it and
   // return NOT_CONFIGURED — we handle that below with a clear message + exit 1.
-  const apiKey = env.GEMINI_API_KEY;
+  const apiKeys = geminiApiKeys();
 
-  if (!apiKey && !industry) {
+  if (apiKeys.length === 0 && !industry) {
     process.stderr.write(
       "diagnose-url: GEMINI_API_KEY is not set and no --industry fallback was supplied.\n" +
         "Set GEMINI_API_KEY in your .env file, or supply --industry <key> to get an industry-only brief.\n",
@@ -165,7 +165,7 @@ async function main(): Promise<void> {
   }
 
   // ---- Build adapter --------------------------------------------------------
-  const adapter = makeGeminiAdapter(apiKey);
+  const adapter = makeGeminiAdapter(apiKeys);
 
   // ---- Run diagnosis --------------------------------------------------------
   process.stderr.write(

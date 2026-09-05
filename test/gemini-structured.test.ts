@@ -42,15 +42,19 @@ function makeAdapterWithStubClient(
 ) {
   const adapter = makeGeminiAdapter(apiKey);
 
-  // Reach into the private _client to inject a stub.
+  // Reach into the private _clients pool (indexed by key) to inject a stub
+  // for key index 0 — this adapter is constructed with a single key, so
+  // there's exactly one client slot.
   // We cast to `any` only in the test — never in production code.
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const a = adapter as any;
-  a._client = {
-    models: {
-      generateContent: vi.fn().mockResolvedValue(stubResponse),
+  a._clients = [
+    {
+      models: {
+        generateContent: vi.fn().mockResolvedValue(stubResponse),
+      },
     },
-  };
+  ];
 
   return adapter;
 }
@@ -140,7 +144,7 @@ describe("generateStructured — ok path", () => {
     const adapter = makeGeminiAdapter("fake-key");
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const a = adapter as any;
-    a._client = { models: { generateContent: mockGenerateContent } };
+    a._clients = [{ models: { generateContent: mockGenerateContent } }];
 
     await adapter.generateStructured!({
       modelId: "gemini-2.5-flash",

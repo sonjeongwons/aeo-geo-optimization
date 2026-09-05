@@ -83,12 +83,14 @@ jobs:
           # after its free trial ended and the instance was torn down — see
           # HANDOFF.md "session 4"). Verified by slug lookup on the new DB:
           #   unsanpartners = 41b57266 (auto-repair-matchmaking, 3rd customer, onboarded 2026-09-05)
+          #   sharejoa     = 2264f4a3 (subscription-sharing, 4th customer, onboarded 2026-09-06)
           #   emora         = 768167a5 (canonical `emora` slug, re-onboarded on Neon 2026-09-05;
           #                              19 legacy hub pages backfilled into url_registry)
           # smim removed from the active roster 2026-09-05 (owner directive) — its DB
           # rows/hub repo (sonjeongwons/aeo-smim-hub)/config are left intact, not deleted.
           CONFIGS=(
             "unsanpartners|41b57266-1796-4ac5-92a9-395420d891de|auto-repair-matchmaking|sonjeongwons/aeo-unsanpartners-hub|https://sonjeongwons.github.io/aeo-unsanpartners-hub|unsanpartners"
+            "sharejoa|2264f4a3-0aa5-4054-a6c8-e16313326be1|subscription-sharing|sonjeongwons/aeo-sharejoa-hub|https://sonjeongwons.github.io/aeo-sharejoa-hub|sharejoa"
             "emora|768167a5-6c1f-4d0a-8cf8-33a0e6f4eb41|ai-character-chat|sonjeongwons/aeo-owned-net-hub|https://sonjeongwons.github.io/aeo-owned-net-hub|emora"
           )
           for cfg in "${CONFIGS[@]}"; do

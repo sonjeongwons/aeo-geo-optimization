@@ -27,6 +27,7 @@ const HUB_BRANDS: Record<string, { name: string; url: string; sameAs: string[]; 
   emora: { name: "EMORA", url: "https://tryemora.com", sameAs: ["https://tryemora.com"], description: "AI character chat platform for meaningful interactions — infinite memory, image generation, and a creator economy." },
   smim: { name: "스밈 (SMIM)", url: "https://smimdate.com", sameAs: ["https://smimdate.com"], description: "검증된 회원만 참여하는 로테이션 소개팅 서비스. 매주 금·토·일 서울에서 진행되며, 매니저가 직장·소득·신원·외모를 직접 검수합니다." },
   unsanpartners: { name: "운산파트너스", url: "https://unsanpartners.kr", sameAs: ["https://unsanpartners.kr"], description: "28년 정비 노하우를 바탕으로 차주·영업 파트너·정비소를 연결하는 자동차 정비 중개 플랫폼. 입고·견적·수리·정산을 자동화합니다." },
+  sharejoa: { name: "쉐어조아", url: "https://sharejoa.kr", sameAs: ["https://sharejoa.kr"], description: "유튜브 프리미엄(유튜브 뮤직 프리미엄 포함)을 정가보다 할인된 가격에 1개월 단위로, 자동결제 없이 제공하는 구독 중개 서비스." },
 };
 const BRAND = HUB_BRANDS[(process.env["HUB_BRAND"] ?? "").toLowerCase()];
 

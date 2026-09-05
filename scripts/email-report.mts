@@ -24,6 +24,7 @@ const REPORT_TO = process.env["REPORT_TO"] ?? "doradola38@gmail.com";
 // rows/hub repo/config are left intact (dormant), not deleted.
 const CUSTOMERS = [
   { slug: "unsanpartners", name: "운산파트너스", hub: "https://sonjeongwons.github.io/aeo-unsanpartners-hub" },
+  { slug: "sharejoa", name: "쉐어조아", hub: "https://sonjeongwons.github.io/aeo-sharejoa-hub" },
   { slug: "emora", name: "EMORA", hub: "https://sonjeongwons.github.io/aeo-owned-net-hub" },
 ];
 

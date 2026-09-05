@@ -30,7 +30,7 @@
  */
 
 import "../config/env.js"; // side-effect: load .env + fail fast
-import { env } from "../config/env.js";
+import { env, geminiApiKeys } from "../config/env.js";
 import { makeGeminiAdapter } from "../providers/gemini.js";
 import { diagnose } from "../generate/diagnose.js";
 import { buildIntentMatrix, sumTargetCounts } from "../generate/intentMatrix.js";
@@ -243,8 +243,8 @@ async function main(): Promise<void> {
   }
 
   // ---- GEMINI_API_KEY check -------------------------------------------------
-  const apiKey = env.GEMINI_API_KEY;
-  if (!apiKey) {
+  const apiKeys = geminiApiKeys();
+  if (apiKeys.length === 0) {
     process.stderr.write(
       "gen-template: GEMINI_API_KEY is not set.\n" +
         "Set GEMINI_API_KEY in your .env file and retry.\n",
@@ -276,7 +276,7 @@ async function main(): Promise<void> {
   }
 
   // ---- Build adapter -------------------------------------------------------
-  const adapter = makeGeminiAdapter(apiKey);
+  const adapter = makeGeminiAdapter(apiKeys);
 
   process.stderr.write(
     `[gen-template] Starting generation` +
