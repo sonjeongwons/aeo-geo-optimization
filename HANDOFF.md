@@ -2,9 +2,93 @@
 
 _Update this file at the end of every session, then commit + push. See CLAUDE.md for the sync protocol._
 
-**Last updated:** 2026-09-05 (session 4).
+**Last updated:** 2026-09-05/06 (session 4, continued). Latest commits: `74dff85`
+(sharejoa onboarding + Gemini multi-key rotation) + this handoff commit (model-id fix).
 
-## 🔴 SESSION 4 — CRITICAL: Timescale DB is UNREACHABLE (NXDOMAIN), has been for ~7 weeks
+## ✅ SESSION 4 (cont.) — Neon migration verified end-to-end, 2 more customers, Gemini multi-key rotation, model-deprecation fix
+Picked up from the Timescale outage below. Summary of everything since:
+
+1. **Migrated to Neon** (see "Timescale → Neon" section below for the DB-outage
+   story) — verified end-to-end: `migrate` (23 migrations, no Timescale extension),
+   `diagnose`, `ingest-facts`, `setup-*-template`, `gh workflow run publish.yml`
+   (real pages published + pushed), `gh workflow run measure.yml` (real SMR +
+   email) all confirmed working against the live Neon DB.
+2. **smim removed from the active roster** (owner directive, 2026-09-05) — pulled
+   out of `measure.yml`/`publish.yml`/`email-report.mts`. Its DB rows (on the OLD
+   Timescale — now unrecoverable anyway), `config/customers/smimdate.yaml`, and
+   hub repo `sonjeongwons/aeo-smim-hub` are left as-is, just dormant. To resume:
+   re-add the 3 roster entries + re-run diagnose/setup-template on Neon (its data
+   there is gone along with the rest of pre-Neon history).
+3. **unsanpartners (운산파트너스)** — full onboarding completed AND verified live:
+   customer `41b57266-1796-4ac5-92a9-395420d891de`, hub
+   https://sonjeongwons.github.io/aeo-unsanpartners-hub/ (Pages enabled, 1 §7-passed
+   Korean page live), wired into publish.yml/measure.yml/email-report.mts.
+4. **emora** — re-onboarded on Neon from scratch: customer
+   `768167a5-6c1f-4d0a-8cf8-33a0e6f4eb41`, 13 facts re-ingested, industry template
+   recreated, and its 19 pre-existing live hub pages (which never left GitHub
+   Pages — only the DB forgot about them) reconnected via
+   `backfill-legacy-hub-urls.mts` into `url_registry`. A publish.yml run added 3
+   more pages (19→22) same day, proving the DB-to-hub link works again.
+5. **sharejoa (쉐어조아)** — 4th customer onboarded (owner's own YouTube-Premium
+   discount-subscription broker business, sharejoa.kr). customer
+   `2264f4a3-0aa5-4054-a6c8-e16313326be1`, industry `subscription-sharing`, 10
+   owner-attested facts (the site's live "N bought today" counter was
+   *deliberately excluded* — not stable/verifiable, 표시광고법 risk — owner
+   confirmed the price/discount figures are fine to use as-is). 15 tracked
+   competitors (owner-supplied list + web-research additions: 피클플러스/GamsGo).
+   Hub repo `sonjeongwons/aeo-sharejoa-hub` created, but **first publish attempt
+   produced 0 passed pages** (2 blocked on attempt 1, likely the same Korean-
+   numeral `verifiableNumbersGate` gap already logged for smim in
+   `.project-memory/project-smim-hub.md` — sharejoa's facts are numeric-heavy:
+   가격/할인율/절감액). GitHub Pages NOT yet enabled for this hub (needs a `main`
+   branch, which needs ≥1 passed page first). Next publish.yml cycle may do
+   better once daily Gemini quota resets; if it keeps blocking, the Korean-numeral
+   claim-binding gap needs fixing (open item, not new).
+6. **Gemini multi-key rotation (NEW capability)** — owner has multiple Gemini API
+   keys from separate Google Cloud projects/accounts (free-tier quota is
+   per-project, not per-key, so this only helps with keys from DISTINCT
+   projects). `GeminiAdapter` (`src/providers/gemini.ts`) now takes
+   `string | string[]`, round-robins across all configured keys, and on a
+   429/rate-limit fails over to the NEXT key immediately (no wait) before
+   falling back to backoff once every key in a round is rate-limited.
+   Single-key behavior is byte-for-byte unchanged (all 2466 tests pass
+   unmodified in logic). New `GEMINI_API_KEYS` env var (comma-separated, GH
+   secret set) takes priority over `GEMINI_API_KEY`; `geminiApiKeys()` in
+   `src/config/env.ts` resolves it; every `makeGeminiAdapter()` call site
+   updated. **Currently armed with 2 confirmed-valid keys** — of 7 strings the
+   owner pasted, only 1 new one + the existing key matched the real Gemini key
+   format (`AIzaSy...`); the other 6 (`AQ.Ab8RN6...`) are NOT Gemini API keys
+   (some other credential type) and were NOT wired in — ask the owner to
+   re-verify/resend those from Google AI Studio's "Get API key" page if more
+   parallelism is wanted.
+7. **Found + fixed a live bug while smoke-testing the new key:** Google
+   deprecated the pinned model id `gemini-2.5-flash-lite` for NEW Google Cloud
+   projects (404 "no longer available to new users") — and that id was
+   `DEFAULT_JUDGE_MODEL` (`src/judge/llmJudge.ts`), the model used for
+   **every** judge call in production that doesn't pass an explicit
+   `preferredJudgeModelId` (confirmed: `runResponse.ts`'s real call site never
+   passes one). This meant every new-project rotation key would have started
+   failing judge calls with a non-retryable 404 the moment it got used. Fixed
+   by switching to the `gemini-flash-lite-latest` "-latest" alias everywhere
+   this id is a functional value (not just a comment): `llmJudge.ts`
+   `DEFAULT_JUDGE_MODEL`, `pricing.ts` price row, `loadTemplate.ts` DB model
+   seed row. Confirmed `gemini-2.5-flash` and `gemini-flash-latest` both work
+   fine on a fresh new-project key (only the OLD dated `-flash-lite` id 404s).
+   Did NOT live-test `gemini-flash-lite-latest` itself (ran out of free-tier
+   quota on the test key mid-investigation) — next real judge call will be the
+   first live confirmation; watch the next `measure.yml`/`publish.yml` run for
+   judge errors on this model id specifically.
+
+### ON REOPEN
+- Check the next `measure.yml`/`publish.yml` cloud run for any error mentioning
+  `gemini-flash-lite-latest` (would mean the alias also needs adjusting).
+- sharejoa: see if a later publish cycle gets any page passed; if still 0, the
+  Korean-numeral verifiableNumbersGate gap is the likely blocker (same as smim).
+- If the owner sends corrected Gemini keys (real `AIzaSy...` format) for the 6
+  that didn't parse, add them to `GEMINI_API_KEYS` (`.env` → `sync-env.sh
+  encrypt` → `gh secret set GEMINI_API_KEYS`) for full 7-key rotation.
+
+## 🔴 SESSION 4 — Timescale → Neon: CRITICAL DB outage (RESOLVED by migration)
 While onboarding a 3rd customer (unsanpartners, see below), `diagnose` failed locally with
 `getaddrinfo ENOTFOUND x2j5468p66.afbymbdhap.tsdb.cloud.timescale.com`. Confirmed via
 Google public DNS (8.8.8.8) too — **the hostname itself no longer exists** (not a local
@@ -20,7 +104,7 @@ unreachable). Get the current connection string, update local `.env` (+ `secrets
 via `bash scripts/sync-env.sh encrypt`) and the `DATABASE_URL` GitHub secret
 (`gh secret set DATABASE_URL`). Until then, all DB-touching work below is blocked.
 
-## Session 4 — unsanpartners (운산파트너스) 3rd customer onboarding — CODE DONE, DB STEPS BLOCKED
+## Session 4 — unsanpartners (운산파트너스) 3rd customer onboarding — ✅ COMPLETED (see summary at top for final state)
 Owner directed onboarding of unsanpartners.kr (㈜운산네트웍스, Korean auto-repair-shop
 matchmaking platform: 차주/영업파트너/정비소 3-sided marketplace) as a 3rd AEO/GEO customer,
 same pattern as smim. Owner confirmed: they own/operate this domain (owner also has a

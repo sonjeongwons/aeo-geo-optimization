@@ -2,8 +2,11 @@
  * Per-model price table + priceUsd() computation.
  *
  * DESIGN.md §11 / "Cost design":
- *   - gemini-2.5-flash-lite: cheap monitor (operating cycle generation default)
- *   - gemini-2.5-flash: baseline generation default + judge default
+ *   - gemini-flash-lite-latest: cheap monitor (operating cycle generation
+ *     default) + DEFAULT_JUDGE_MODEL (llmJudge.ts). Was pinned as
+ *     "gemini-2.5-flash-lite" until Google deprecated that id for new
+ *     projects/accounts (2026-09) — switched to the "-latest" alias.
+ *   - gemini-2.5-flash: baseline generation default
  *   - gemini-2.5-pro: judge escalation on parse failure ONLY
  *
  * Prices are in USD per million tokens (input/output separate).
@@ -40,12 +43,14 @@ export interface ModelPriceRow {
 export const MODEL_PRICE_TABLE: ModelPriceRow[] = [
   // Gemini — real adapters
   {
-    modelId: "gemini-2.5-flash-lite",
+    // "-latest" alias, not a pinned dated id — Google deprecated the pinned
+    // "gemini-2.5-flash-lite" id for new projects/accounts (2026-09).
+    modelId: "gemini-flash-lite-latest",
     provider: "gemini",
-    inputUsdPerMtok: 0.10,   // $0.10 / 1M input tokens
+    inputUsdPerMtok: 0.10,   // $0.10 / 1M input tokens (same tier as prior flash-lite)
     outputUsdPerMtok: 0.40,   // $0.40 / 1M output tokens
     isCheapMonitor: true,
-    isJudge: false,
+    isJudge: true, // DEFAULT_JUDGE_MODEL (llmJudge.ts) — the real default judge model
   },
   {
     modelId: "gemini-2.5-flash",

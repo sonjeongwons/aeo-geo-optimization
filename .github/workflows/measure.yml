@@ -34,6 +34,11 @@ jobs:
     env:
       DATABASE_URL: ${{ secrets.DATABASE_URL }}
       GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+      # Optional comma-separated pool of Gemini keys from SEPARATE Google Cloud
+      # projects/accounts — takes priority over GEMINI_API_KEY when set. The
+      # adapter round-robins across them and fails over to the next key
+      # immediately on a 429 instead of waiting, multiplying effective RPM.
+      GEMINI_API_KEYS: ${{ secrets.GEMINI_API_KEYS }}
       GEMINI_GROUNDING_SAMPLE_PCT: ${{ github.event.inputs.grounding_pct || '3' }}
       LOG_LEVEL: info
       # Space-separated list of customer slugs; dispatch input overrides.

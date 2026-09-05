@@ -5,7 +5,7 @@ metadata:
   node_type: memory
   type: project
   originSessionId: b289ea83-61ef-4d5d-9831-12cbbdc22c47
-  modified: 2026-09-05T02:46:01.609Z
+  modified: 2026-09-05T16:34:34.496Z
 ---
 
 Owner directed onboarding of **unsanpartners.kr** (㈜운산네트웍스, Korean auto-repair-shop
@@ -26,14 +26,14 @@ quoting, repair, and settlement) as a 3rd AEO/GEO customer, same pattern as
 - Owner approved creating a new public GitHub repo `sonjeongwons/aeo-unsanpartners-hub`
   (separate from the other two hubs — same §7 entity-hygiene reasoning as smim's dedicated hub).
 
-**Status as of 2026-09-05 (session 4):** code-side onboarding done (yaml, facts.json,
-setup-unsanpartners-template.mts, 4 hub brand-map edits, measure.yml + email-report.mts
-customer-list edits, new GitHub Pages repo created but empty). **Blocked on a prod DB
-outage** — see [[reference-prod-timescale-ids]] 2026-09-05 entry — so the actual DB rows
-(customer/brand/facts/industry_template), the publish.yml CONFIGS entry (needs the
-customer UUID, which only exists after the first DB write), and enabling GitHub Pages
-(needs a `main` branch, which only exists after the first hub push) are all still pending.
-Full remaining checklist is in HANDOFF.md under "Session 4 — unsanpartners onboarding".
+**Status: ✅ COMPLETED 2026-09-05.** The prod DB outage ([[reference-prod-timescale-ids]])
+turned out to be permanent (Timescale free trial ended, instance deleted) — see
+[[project-neon-migration]] for the DB migration this triggered. After migrating to
+Neon, unsanpartners was onboarded fully: customer `41b57266-1796-4ac5-92a9-395420d891de`,
+facts ingested, industry template created, first publish succeeded (1 §7-passed Korean
+page live), GitHub Pages enabled at https://sonjeongwons.github.io/aeo-unsanpartners-hub/,
+wired into all 3 roster files (measure.yml/publish.yml/email-report.mts). No remaining
+work for this customer specifically.
 
-How to apply: when resuming this work, do NOT re-collect the decisions above — just check
-whether the DB outage is fixed yet, then run the blocked steps in HANDOFF.md in order.
+How to apply: this customer is live and steady-state now — no special handling needed
+beyond normal weekly measure/publish cycles.

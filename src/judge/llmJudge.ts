@@ -19,8 +19,15 @@ import { NOT_CONFIGURED } from "../providers/types.js";
 // Constants (DESIGN §5.4 model IDs)
 // ---------------------------------------------------------------------------
 
-/** Default cheap judge model. */
-export const DEFAULT_JUDGE_MODEL = "gemini-2.5-flash-lite";
+/**
+ * Default cheap judge model. Was "gemini-2.5-flash-lite" — Google deprecated
+ * that pinned id for NEW Google Cloud projects/accounts (404 "no longer
+ * available to new users"), which broke judging for any newly-added
+ * GEMINI_API_KEYS rotation key. Switched to the "-latest" alias so this
+ * tracks whatever the current lite-tier model is instead of pinning a
+ * dated id that can be deprecated out from under new keys again.
+ */
+export const DEFAULT_JUDGE_MODEL = "gemini-flash-lite-latest";
 
 /** Escalation judge model — used only on PARSE_FAILED. */
 export const ESCALATION_JUDGE_MODEL = "gemini-2.5-pro";

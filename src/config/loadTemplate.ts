@@ -19,9 +19,14 @@
  *   without a separate seed script.
  *
  * Gemini model pricing (from official Gemini API pricing as of 2025-06):
- *   gemini-2.5-flash       $0.30/M input  $1.00/M output  (judge + generation baseline)
- *   gemini-2.5-flash-lite  $0.10/M input  $0.40/M output  (cheap monitor for operating)
- *   gemini-2.5-pro         $3.50/M input  $10.50/M output (judge escalation only)
+ *   gemini-2.5-flash          $0.30/M input  $1.00/M output  (judge + generation baseline)
+ *   gemini-flash-lite-latest  $0.10/M input  $0.40/M output  (cheap monitor for operating +
+ *                                                             DEFAULT_JUDGE_MODEL). "-latest"
+ *                                                             alias, not a pinned dated id —
+ *                                                             Google deprecated the pinned
+ *                                                             "gemini-2.5-flash-lite" id for
+ *                                                             new projects/accounts (2026-09).
+ *   gemini-2.5-pro            $3.50/M input  $10.50/M output (judge escalation only)
  */
 
 import { readFileSync } from 'node:fs';
@@ -66,11 +71,13 @@ const GEMINI_MODEL_SEEDS: ModelSeed[] = [
     enabled: true,
   },
   {
-    // Cheap monitor — default for operating cycle generation
-    id: 'gemini-2.5-flash-lite',
+    // Cheap monitor — default for operating cycle generation + the real
+    // DEFAULT_JUDGE_MODEL (llmJudge.ts). "-latest" alias, not a pinned dated
+    // id — see the pricing comment above.
+    id: 'gemini-flash-lite-latest',
     provider: 'gemini',
     isCheapMonitor: true,
-    isJudge: false,
+    isJudge: true,
     inputUsdPerMtok: 0.10,
     outputUsdPerMtok: 0.40,
     enabled: true,

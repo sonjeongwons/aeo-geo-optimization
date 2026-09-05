@@ -2,7 +2,7 @@
  * Gemini provider adapter — REAL implementation via @google/genai.
  *
  * DESIGN.md §4 / "Provider adapter contract":
- *   - generate(): uses gemini-2.5-flash-lite (cheap monitor) or gemini-2.5-flash (baseline).
+ *   - generate(): uses gemini-flash-lite-latest (cheap monitor) or gemini-2.5-flash (baseline).
  *   - judge(): forced JSON via responseMimeType:'application/json' + responseSchema
  *              derived from JudgeVerdict; temp 0; escalates to gemini-2.5-pro on PARSE_FAILED.
  *   - NOT_CONFIGURED returned (not thrown) when GEMINI_API_KEY is absent.
