@@ -69,17 +69,28 @@ function isCjkLang(language: string): boolean {
 /**
  * CJK superlative false-positive guard (W1.7). A superlative term found by
  * substring search may actually be a fragment of a DIFFERENT, non-superlative
- * lexeme. We stay §7-conservative: only the clearly-non-superlative
- * continuations below are excused; a genuine superlative claim (e.g. 완벽하게,
- * 최고) still trips. Currently scoped to 최대, whose substring appears in:
+ * lexeme, OR part of a specific THIRD-PARTY PROPER NOUN rather than a
+ * self-praising claim about the customer's own service. We stay
+ * §7-conservative: only the clearly-non-superlative continuations/precedents
+ * below are excused; a genuine superlative claim (e.g. 완벽하게, 최고) still
+ * trips. Scoped exceptions:
  *   - 최대한  ("as much as possible" — an adverb, not a brand claim)
  *   - 최대 <number>  (a bounded quantifier, e.g. "최대 50%" — the NUMBER is still
  *     verified by the numeric path; the bare word is not a superlative).
+ *   - 유튜브 프리미엄 / 유튜브 뮤직 프리미엄 — Google's product name (YouTube
+ *     Premium), a fixed third-party proper noun a subscription reseller must
+ *     name to describe what it resells — not a claim that the customer's OWN
+ *     service is "premium". Any OTHER use of 프리미엄 (e.g. bare "프리미엄
+ *     서비스") still trips.
  */
-function isCjkSuperlativeException(term: string, after: string): boolean {
+function isCjkSuperlativeException(term: string, before: string, after: string): boolean {
   if (term === "최대") {
     if (after.startsWith("한")) return true; // 최대한
     if (/^\s*\d/.test(after)) return true; // 최대 50% (bounded quantifier)
+  }
+  if (term === "프리미엄") {
+    const trimmedBefore = before.trimEnd();
+    if (trimmedBefore.endsWith("유튜브") || trimmedBefore.endsWith("뮤직")) return true; // 유튜브 (뮤직) 프리미엄
   }
   return false;
 }
@@ -105,8 +116,9 @@ function findSuperlativeHits(
       while (true) {
         const pos = text.indexOf(term, from);
         if (pos === -1) break;
+        const before = text.slice(Math.max(0, pos - 10), pos);
         const after = text.slice(pos + term.length);
-        if (!isCjkSuperlativeException(term, after)) {
+        if (!isCjkSuperlativeException(term, before, after)) {
           matched = true;
           break;
         }

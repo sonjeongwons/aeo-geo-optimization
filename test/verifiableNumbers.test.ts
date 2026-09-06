@@ -308,6 +308,22 @@ describe("verifiableNumbersGate — CJK superlative false positives (W1.7)", () 
     const result = verifiableNumbersGate.apply(makeCtx(koAsset("스밈은 신원을 완벽하게 검증합니다.")));
     expect(result.action).toBe("block");
   });
+
+  it("does NOT block '유튜브 프리미엄' (Google's product name, not a self-praise claim)", () => {
+    const result = verifiableNumbersGate.apply(makeCtx(koAsset("쉐어조아는 유튜브 프리미엄을 할인가에 제공합니다.")));
+    expect(result.action).toBe("pass");
+  });
+
+  it("does NOT block '유튜브 뮤직 프리미엄' (same product-name exception)", () => {
+    const result = verifiableNumbersGate.apply(makeCtx(koAsset("쉐어조아는 유튜브 뮤직 프리미엄을 포함하여 제공합니다.")));
+    expect(result.action).toBe("pass");
+  });
+
+  it("STILL blocks a bare '프리미엄' self-praise claim (not preceded by 유튜브/뮤직)", () => {
+    const result = verifiableNumbersGate.apply(makeCtx(koAsset("쉐어조아는 프리미엄 서비스를 제공합니다.")));
+    expect(result.action).toBe("block");
+    expect(result.reason).toContain("프리미엄");
+  });
 });
 
 describe("verifiableNumbersGate — clean asset", () => {
