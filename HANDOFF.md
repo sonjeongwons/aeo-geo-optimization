@@ -2,8 +2,54 @@
 
 _Update this file at the end of every session, then commit + push. See CLAUDE.md for the sync protocol._
 
-**Last updated:** 2026-09-05/06 (session 4, continued). Latest commits: `74dff85`
-(sharejoa onboarding + Gemini multi-key rotation) + this handoff commit (model-id fix).
+**Last updated:** 2026-09-06 (session 4, continued further). Latest commit: `ad43f37`
+(facts.json numeric reclassification) + this handoff commit.
+
+## ✅ SESSION 4 (cont. further) — root-caused + fixed the real gate-blocking bug, publish volume up
+Owner asked to increase publish volume and pushed back on "sharejoa/unsanpartners have 0
+pages" — correctly: that referred to the NEW off-site AEO hubs (aeo-unsanpartners-hub,
+aeo-sharejoa-hub), not their real business sites (unsanpartners.kr, sharejoa.kr — untouched,
+§0). Investigating why yield was so low found the REAL root cause, not just symptoms:
+
+1. **verifiableNumbersGate ran on structurally-empty asset.claims.** It's gate #2 in the
+   non-short-circuit content fold (contentGate.ts), running BEFORE claimVerificationGate
+   (gate #6, PAID, the only place claimExtract populates asset.claims) — and the paid gate
+   is SKIPPED once any cheap gate already blocked. So a number/superlative that WAS already
+   in the customer's verified claim_source table got permanently blocked before the real
+   verifier ever ran. Fixed (`29b618f`): both the superlative-coverage and bare-numeric-
+   coverage checks now ALSO consult `ctx.claimSources` (already plumbed into
+   ContentGateContext, zero new LLM calls) — a numeric token passes if its value matches a
+   verified numeric claim_source row; a superlative passes if it's substring-covered by one.
+   This can only make the cheap gate MORE permissive (paid gate remains the real backstop),
+   so it does not weaken §7 enforcement.
+2. **"유튜브 프리미엄" (YouTube Premium) was tripping the Korean superlative lexicon.**
+   "프리미엄" was added to the avoid-list for SMIM (genuine self-praise there), but for
+   sharejoa — a YouTube Premium reseller — it's an unavoidable third-party PRODUCT NAME.
+   Fixed (`d1c59de`): extended the existing `isCjkSuperlativeException` pattern (already used
+   for 최대한/최대<N>) so "프리미엄" preceded by "유튜브"/"뮤직" is exempt; any other
+   (self-referential) use still blocks.
+3. **My own data-entry bug**: 5 facts across unsanpartners/sharejoa's facts.json files
+   contained a bare number ("24시간", "3개 센터", "1개월", "4K", "3단계") but were tagged
+   `kind: "capability"` instead of `"numeric"` — so fix #1 above had no numeric_value to
+   match against for these. Fixed (`ad43f37`): reclassified in both the JSON files and the
+   already-ingested claim_source DB rows (ingest-facts.mts dedupes by exact claim_text, so a
+   plain re-run would have skipped the field change — had to UPDATE directly).
+
+**Verified impact (real dispatched runs, not just tests):** unsanpartners hub 2→4 pages,
+emora hub 22→24 pages, in the SAME session after the fixes landed. Gate reports for both
+show `blocked` counts dropping sharply with the corresponding numbers now reaching
+`needs_human` (still not auto-published, but no longer permanently discarded) or `passed`.
+2473 tests pass (7 new, covering both fixes) + tsc clean.
+
+**sharejoa still shows 0 live pages** — NOT the gate bug (confirmed by a local
+`gen-content` run: it generates fine, reaches gating, gets a normal 0-passed/1-blocked/
+3-needs_human result, same shape as the other two customers). The CI dispatch that ran
+right after the facts fix produced ZERO generation attempts for sharejoa specifically
+across all 3 attempts (0 llm_call rows in that window) while emora's run immediately
+after it succeeded with the same 2 keys — looks like a one-off transient blip (a
+momentary rate-limit/quota hiccup at exactly sharejoa's turn), not a reproducible bug.
+Recommend NOT chasing this further manually — let the next scheduled cron (or a future
+manual dispatch) confirm whether it recurs before doing more investigation.
 
 ## ✅ SESSION 4 (cont.) — Neon migration verified end-to-end, 2 more customers, Gemini multi-key rotation, model-deprecation fix
 Picked up from the Timescale outage below. Summary of everything since:

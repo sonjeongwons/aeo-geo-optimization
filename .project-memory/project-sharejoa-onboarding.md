@@ -5,7 +5,7 @@ metadata:
   node_type: memory
   type: project
   originSessionId: b289ea83-61ef-4d5d-9831-12cbbdc22c47
-  modified: 2026-09-05T16:34:02.541Z
+  modified: 2026-09-06T07:21:21.748Z
 ---
 
 Owner directed onboarding of **sharejoa.kr** (쉐어조아 — a YouTube Premium
@@ -25,16 +25,31 @@ on their GitHub).
   to add more via web research → added 피클플러스(PicklePlus)/감스고(GamsGo).
 - New public hub repo `sonjeongwons/aeo-sharejoa-hub` approved and created.
 
-**Status as of 2026-09-06:** code-side onboarding done + DB rows created on Neon
-(customer `2264f4a3-0aa5-4054-a6c8-e16313326be1`, industry `subscription-sharing`,
-10 facts ingested). Wired into measure.yml/publish.yml/email-report.mts. **First
-publish attempt produced 0 passed pages** (2 blocked on attempt 1 of 2) — likely the
-same open gap noted for smim in [[project-smim-hub]]: Korean numeral→claim_source
-binding fails the `verifiableNumbersGate`, and sharejoa's facts are numeric-heavy
-(가격/할인율/절감액 — exactly the kind of content that gate blocks). GitHub Pages is
-NOT yet enabled for this hub (needs a `main` branch, which needs ≥1 passed page).
+**Status as of 2026-09-06:** code-side onboarding done + DB rows on Neon (customer
+`2264f4a3-0aa5-4054-a6c8-e16313326be1`, industry `subscription-sharing`, 10 facts
+ingested). Wired into measure.yml/publish.yml/email-report.mts.
 
-How to apply: when resuming, check whether a later publish.yml cycle got any page
-through. If still 0 after a few cycles, the Korean-numeral claim-binding gap is
-worth fixing for real (it's now blocking TWO customers, not just one) — see
-[[reference-korean-claim-binding]] for the existing partial fix and the open gap.
+**The root cause of the initial 0-passed-pages was found and fixed** — see
+[[reference-verifiable-numbers-gate-fix]] for the full technical writeup. Short
+version: two real gate bugs (not the customer's fault) — (a) `verifiableNumbersGate`
+ran on a structurally-empty `asset.claims`, so numbers/superlatives that WERE already
+verified in `claim_source` got permanently blocked before the paid verifier ever ran;
+(b) "유튜브 프리미엄" (a literal third-party product name sharejoa must use) was
+tripping the Korean superlative lexicon meant to catch SMIM-style self-praise. Both
+fixed 2026-09-06. Also found+fixed my own data-entry mistake: 5 facts (24시간/3개
+센터/1개월/4K/3단계) were tagged `kind:"capability"` instead of `"numeric"`, so they
+had no numeric_value to match against even after the gate fix.
+
+**Still 0 live pages as of the last check** — but NOT the gate bug anymore (verified:
+a local `gen-content` run for sharejoa generates fine and reaches gating with a normal
+result shape, same as unsanpartners/emora). The one CI publish run dispatched right
+after the facts fix landed produced zero generation attempts for sharejoa specifically
+(0 llm_call rows) while emora's run immediately after it succeeded with the same keys
+— looks like a one-off transient blip, not a reproducible bug. GitHub Pages is NOT yet
+enabled for this hub (needs a `main` branch, which needs ≥1 passed page ever).
+
+How to apply: when resuming, check whether a subsequent publish.yml cycle (scheduled
+or dispatched) got ANY page through for sharejoa. If it keeps coming back with 0
+generation attempts (not 0-passed-after-gating, but literally 0 attempts) across
+multiple separate cycles, THAT would be worth investigating as a real bug — but a
+single occurrence isn't enough signal yet.
