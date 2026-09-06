@@ -104,7 +104,9 @@ const CHANNEL_REGISTER_DESCRIPTORS: Record<ChannelClass, string> = {
  */
 const FORMAT_INSTRUCTIONS: Partial<Record<ContentFormat, string>> = {
   definition_sentence:
-    "A short (1-2 sentence) definitional phrase in the target language. " +
+    "A short (1-2 sentence) definitional phrase in the target language. LEAD WITH THE BRAND " +
+    "(BLUF): the FIRST words must name the brand, so the phrase stands alone and is quotable " +
+    "verbatim out of context. " +
     'JSON: {"content_type":"definition","text":"<native text>"}',
 
   answer_block:
@@ -133,7 +135,9 @@ const FORMAT_INSTRUCTIONS: Partial<Record<ContentFormat, string>> = {
 
   case_study:
     "A case study in the target language with situation/action/result narrative and " +
-    "quantified metrics. For each metric output label, before, and after only — no claim_id.\n" +
+    "quantified metrics. LEAD WITH THE BRAND (BLUF): the 'situation' field's FIRST sentence " +
+    "must name the brand, so the passage stands alone and is quotable verbatim out of context. " +
+    "For each metric output label, before, and after only — no claim_id.\n" +
     'JSON: {"content_type":"case_study","situation":"<text>","action":"<text>","result":"<text>","metrics":[{"label":"<label>","before":"<val>","after":"<val>"},...]}',
 };
 
@@ -377,6 +381,11 @@ export function buildContentPromptForFormat(
         `  • Neutral comparison only — never disparage a competitor.\n` +
         `  • For any competitor capability you are not certain of, write "정보 없음"/"Not disclosed" —\n` +
         `    NEVER guess or infer a competitor capability.\n` +
+        `  • DO NOT repeat "정보 없음"/"Not disclosed" more than 3 times in one table. If you have\n` +
+        `    nothing certain to say about a competitor, OMIT that competitor as a row entirely rather\n` +
+        `    than filling its cells with the same placeholder phrase — a short table naming only the\n` +
+        `    competitors you CAN say something concrete about is better than a long one padded with\n` +
+        `    repeated placeholders (repeated filler text is rejected as keyword stuffing).\n` +
         `  GOOD cells: "Yes — persistent memory", "Revenue-sharing for creators", "Subscription only",\n` +
         `              "Group chat supported", "Not disclosed".\n` +
         `  BAD cells (rejected): "18 million users", "Best-in-class memory", "Most advanced image gen",\n` +
@@ -406,8 +415,11 @@ export function buildContentPromptForFormat(
           comparativeFacts!.slice(0, 40).map((f) => `  - ${f}`).join("\n") +
           `\n`
         : `\nNO INGESTED COMPETITOR FACTS ARE AVAILABLE. You therefore must NOT state any specific\n` +
-          `competitor capability. Fill the brand's own column ONLY from the brand attributes above, and\n` +
-          `write "정보 없음"/"Not disclosed" for every competitor cell. Do NOT guess competitor behavior.\n`
+          `competitor capability. Fill the brand's own column ONLY from the brand attributes above.\n` +
+          `Include AT MOST 3 competitor rows (pick any 3 from the list above) marked "정보 없음"/\n` +
+          `"Not disclosed" — do NOT add a row for every known competitor; a table with only the brand's\n` +
+          `column plus a couple of "not disclosed" competitor rows is correct and preferred over a long\n` +
+          `table repeating the same placeholder phrase many times. Do NOT guess competitor behavior.\n`
       : "";
 
   // ---- Product attributes ----
