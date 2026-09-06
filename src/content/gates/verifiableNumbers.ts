@@ -36,7 +36,7 @@ import enTerms from "../../../config/content-terms/en.json" with { type: "json" 
 import koTerms from "../../../config/content-terms/ko.json" with { type: "json" };
 import jaTerms from "../../../config/content-terms/ja.json" with { type: "json" };
 import type { ClaimRecord, ClaimSourceRow, ContentAsset, ContentGateContext, ContentGateResult } from "../types.js";
-import { scanBodyForNumerics } from "../numericDetect.js";
+import { scanBodyForNumerics, type NumericHit } from "../numericDetect.js";
 
 // ---------------------------------------------------------------------------
 // Superlative lexicon helpers
@@ -235,17 +235,49 @@ function isSuperlativeCoveredBySource(term: string, claimSources: ClaimSourceRow
 }
 
 /**
- * Parse the numeric value out of a detected token (e.g. "28", "24", "5%",
- * "9,900원" → 28, 24, 5, 9900) and check it against any verified numeric
- * claim_source row's numeric_value. Value-only match (no unit/context) —
- * deliberately simple since claimVerificationGate remains the precise,
- * context-aware backstop for anything this misses or mismatches.
+ * Korean multiplier suffixes that immediately follow a bare Arabic-digit run
+ * with NO space (e.g. "6만원", "7천만원") — checked longest-first so a
+ * compound like 천만 (10^7) isn't mis-read as 천 (10^3) + a stray 만.
+ * scanBodyForNumerics only detects the digit span itself: 만/억/천/백 are
+ * Hangul syllables, not the CJK ideographs (一二三...万億) its
+ * CJK_NUMERAL_REGEX matches, so "6만" was previously detected as bare "6" —
+ * a real number a fortiori different from any claim_source expressed as
+ * 60000. This is the "7천만 partial detection" gap documented in
+ * reference-korean-claim-binding.md; fixed here (not in numericDetect.ts
+ * itself, to keep this change scoped to the coverage check rather than the
+ * widely-shared scanner and its span/offset contract).
  */
-function isNumericCoveredBySource(hitText: string, claimSources: ClaimSourceRow[]): boolean {
-  const match = hitText.replace(/[,，]/g, "").match(/\d+(\.\d+)?/);
+const HANGUL_MULTIPLIERS: ReadonlyArray<readonly [string, number]> = [
+  ["천만", 10_000_000],
+  ["백만", 1_000_000],
+  ["만", 10_000],
+  ["억", 100_000_000],
+  ["천", 1_000],
+  ["백", 100],
+];
+
+function hangulMultiplierAfter(text: string): number {
+  for (const [suffix, mult] of HANGUL_MULTIPLIERS) {
+    if (text.startsWith(suffix)) return mult;
+  }
+  return 1;
+}
+
+/**
+ * Parse the numeric value out of a detected token (e.g. "28", "24", "5%",
+ * "9,900원" → 28, 24, 5, 9900; "6" immediately followed by "만원" in the body
+ * → 60000) and check it against any verified numeric claim_source row's
+ * numeric_value. Value-only match (no unit/context) — deliberately simple
+ * since claimVerificationGate remains the precise, context-aware backstop
+ * for anything this misses or mismatches.
+ */
+function isNumericCoveredBySource(hit: NumericHit, bodyText: string, claimSources: ClaimSourceRow[]): boolean {
+  const match = hit.text.replace(/[,，]/g, "").match(/\d+(\.\d+)?/);
   if (!match) return false;
-  const hitValue = Number(match[0]);
+  let hitValue = Number(match[0]);
   if (Number.isNaN(hitValue)) return false;
+  const after = bodyText.slice(hit.span.end, hit.span.end + 2);
+  hitValue *= hangulMultiplierAfter(after);
   return claimSources.some((c) => {
     if (!isVerifiedSource(c) || c.claim_kind !== "numeric" || c.numeric_value === null) return false;
     const srcValue = Number(c.numeric_value);
@@ -398,7 +430,7 @@ export const verifiableNumbersGate = {
         const covered =
           resolvedNumericClaims.some(
             (c) => c.span.start < hit.span.end && hit.span.start < c.span.end
-          ) || isNumericCoveredBySource(hit.text, claimSources);
+          ) || isNumericCoveredBySource(hit, bodyText, claimSources);
         if (!covered) {
           bareNumerics.push(hit.text);
         }

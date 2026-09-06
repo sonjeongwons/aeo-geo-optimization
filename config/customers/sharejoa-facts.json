@@ -8,6 +8,7 @@
   },
   "facts": [
     { "text": "쉐어조아는 유튜브 프리미엄을 정가 14,900원에서 9,900원으로 제공합니다.", "kind": "numeric", "value": 9900, "unit": "원", "bound": "exact" },
+    { "text": "쉐어조아가 제공하는 유튜브 프리미엄의 정가는 14,900원입니다.", "kind": "numeric", "value": 14900, "unit": "원", "bound": "exact" },
     { "text": "쉐어조아의 유튜브 프리미엄 요금은 정가 대비 약 34% 할인된 가격입니다.", "kind": "numeric", "value": 34, "unit": "%", "bound": "exact" },
     { "text": "쉐어조아를 이용하면 연간 약 6만원을 절감할 수 있습니다.", "kind": "numeric", "value": 60000, "unit": "원" },
     { "text": "쉐어조아는 1개월 단위로 결제하며 자동결제가 없습니다.", "kind": "numeric", "value": 1, "unit": "개월", "bound": "exact" },

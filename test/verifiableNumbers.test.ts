@@ -383,6 +383,47 @@ describe("verifiableNumbersGate — coverage via ctx.claimSources (no LLM needed
     expect(result.reason).toContain("24");
   });
 
+  it("passes '6만원' (bare digit + Hangul multiplier 만) matched against numeric_value=60000", () => {
+    const src = makeClaimSource({
+      claim_text: "쉐어조아를 이용하면 연간 약 6만원을 절감할 수 있습니다.",
+      claim_kind: "numeric",
+      numeric_value: "60000",
+      numeric_unit: "원",
+    });
+    const result = verifiableNumbersGate.apply(
+      makeCtx(koAsset("쉐어조아를 쓰면 연간 6만원을 아낄 수 있습니다."), [src])
+    );
+    expect(result.action).toBe("pass");
+  });
+
+  it("passes '7천만원' (compound Hangul multiplier 천만) matched against numeric_value=70000000", () => {
+    const src = makeClaimSource({
+      claim_text: "연봉 7천만원 이상인 분들로 구성됩니다.",
+      claim_kind: "numeric",
+      numeric_value: "70000000",
+      numeric_unit: "원",
+    });
+    const result = verifiableNumbersGate.apply(
+      makeCtx(koAsset("연봉 7천만원 이상인 분들만 참여합니다."), [src])
+    );
+    expect(result.action).toBe("pass");
+  });
+
+  it("does NOT let a Hangul-multiplied value coincidentally match an unrelated bare number", () => {
+    const src = makeClaimSource({
+      claim_text: "공임비의 6%를 기준으로 정산합니다.",
+      claim_kind: "numeric",
+      numeric_value: "6",
+      numeric_unit: "%",
+    });
+    // "6만원" should need a source valued 60000, NOT be satisfied by an
+    // unrelated verified "6" (a different claim, different unit).
+    const result = verifiableNumbersGate.apply(
+      makeCtx(koAsset("쉐어조아를 쓰면 연간 6만원을 아낄 수 있습니다."), [src])
+    );
+    expect(result.action).toBe("block");
+  });
+
   it("does NOT count an UNSIGNED claim_source (verified_by null) as coverage", () => {
     const src = makeClaimSource({
       claim_kind: "numeric",
