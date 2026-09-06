@@ -35,7 +35,7 @@
 import enTerms from "../../../config/content-terms/en.json" with { type: "json" };
 import koTerms from "../../../config/content-terms/ko.json" with { type: "json" };
 import jaTerms from "../../../config/content-terms/ja.json" with { type: "json" };
-import type { ClaimRecord, ContentAsset, ContentGateContext, ContentGateResult } from "../types.js";
+import type { ClaimRecord, ClaimSourceRow, ContentAsset, ContentGateContext, ContentGateResult } from "../types.js";
 import { scanBodyForNumerics } from "../numericDetect.js";
 
 // ---------------------------------------------------------------------------
@@ -198,6 +198,62 @@ function extractBodyText(asset: ContentAsset): string {
 }
 
 // ---------------------------------------------------------------------------
+// Cheap coverage against the customer's claim_source registry
+//
+// asset.claims (the LLM-extracted, per-asset ClaimRecord[]) is EMPTY at this
+// point in the fold — claimExtract only runs inside claimVerificationGate,
+// which is LAST and is SKIPPED once any earlier gate already blocked (see
+// contentGate.ts "COST SHORT-CIRCUIT"). So a superlative/number that IS
+// already in the customer's verified claim_source table (ctx.claimSources —
+// populated from the DB at generation time, no LLM call) was being blocked
+// here with no chance for the real verifier to ever see it.
+//
+// This is a $0, deterministic, conservative widening: it can only make the
+// cheap gate MORE PERMISSIVE (let more assets reach claimVerificationGate),
+// never less — a false "covered" here still has to survive the real paid
+// verifier, which remains the authoritative §7 check. It does not weaken
+// enforcement; it stops prematurely discarding content the paid gate would
+// have accepted anyway.
+// ---------------------------------------------------------------------------
+
+/** A claim_source row counts as a usable cheap-gate source once it's signed. */
+function isVerifiedSource(c: ClaimSourceRow): boolean {
+  return c.verified_by !== null;
+}
+
+/**
+ * True if `term` is covered by any verified claim_source row's claim_text
+ * (same "contains either way" rule already used for asset.claims below).
+ */
+function isSuperlativeCoveredBySource(term: string, claimSources: ClaimSourceRow[]): boolean {
+  const lowerTerm = term.toLowerCase();
+  return claimSources.some(
+    (c) =>
+      isVerifiedSource(c) &&
+      (c.claim_text.toLowerCase().includes(lowerTerm) || lowerTerm.includes(c.claim_text.toLowerCase()))
+  );
+}
+
+/**
+ * Parse the numeric value out of a detected token (e.g. "28", "24", "5%",
+ * "9,900원" → 28, 24, 5, 9900) and check it against any verified numeric
+ * claim_source row's numeric_value. Value-only match (no unit/context) —
+ * deliberately simple since claimVerificationGate remains the precise,
+ * context-aware backstop for anything this misses or mismatches.
+ */
+function isNumericCoveredBySource(hitText: string, claimSources: ClaimSourceRow[]): boolean {
+  const match = hitText.replace(/[,，]/g, "").match(/\d+(\.\d+)?/);
+  if (!match) return false;
+  const hitValue = Number(match[0]);
+  if (Number.isNaN(hitValue)) return false;
+  return claimSources.some((c) => {
+    if (!isVerifiedSource(c) || c.claim_kind !== "numeric" || c.numeric_value === null) return false;
+    const srcValue = Number(c.numeric_value);
+    return !Number.isNaN(srcValue) && srcValue === hitValue;
+  });
+}
+
+// ---------------------------------------------------------------------------
 // Numeric claim_id resolution check (AnswerBlock structural invariant)
 // ---------------------------------------------------------------------------
 
@@ -264,7 +320,7 @@ export const verifiableNumbersGate = {
   phase: "content" as const,
 
   apply(ctx: ContentGateContext): ContentGateResult {
-    const { asset } = ctx;
+    const { asset, claimSources } = ctx;
     const bodyText = extractBodyText(asset);
 
     // ---- Superlative check ----
@@ -285,11 +341,12 @@ export const verifiableNumbersGate = {
 
       const unboundedSuperlatives: string[] = [];
       for (const term of superlativeHits) {
-        const covered = verifiedClaims.some(
-          (c) =>
-            c.claim_text.toLowerCase().includes(term.toLowerCase()) ||
-            term.toLowerCase().includes(c.claim_text.toLowerCase())
-        );
+        const covered =
+          verifiedClaims.some(
+            (c) =>
+              c.claim_text.toLowerCase().includes(term.toLowerCase()) ||
+              term.toLowerCase().includes(c.claim_text.toLowerCase())
+          ) || isSuperlativeCoveredBySource(term, claimSources);
         if (!covered) {
           unboundedSuperlatives.push(term);
         }
@@ -336,11 +393,12 @@ export const verifiableNumbersGate = {
       const bareNumerics: string[] = [];
       for (const hit of numericHits) {
         // A numeric token is "covered" if a resolved numeric claim's span
-        // overlaps the token's span.
-        const covered = resolvedNumericClaims.some(
-          (c) =>
-            c.span.start < hit.span.end && hit.span.start < c.span.end
-        );
+        // overlaps the token's span, OR its value matches a verified numeric
+        // claim_source row directly (see isNumericCoveredBySource above).
+        const covered =
+          resolvedNumericClaims.some(
+            (c) => c.span.start < hit.span.end && hit.span.start < c.span.end
+          ) || isNumericCoveredBySource(hit.text, claimSources);
         if (!covered) {
           bareNumerics.push(hit.text);
         }

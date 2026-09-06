@@ -14,7 +14,7 @@
 import { describe, it, expect } from "vitest";
 import { randomUUID } from "crypto";
 import { verifiableNumbersGate } from "../src/content/gates/verifiableNumbers.js";
-import type { ContentAsset, ContentGateContext, ClaimRecord } from "../src/content/types.js";
+import type { ContentAsset, ContentGateContext, ClaimRecord, ClaimSourceRow } from "../src/content/types.js";
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -67,12 +67,30 @@ function makeClaim(overrides: Partial<ClaimRecord> = {}): ClaimRecord {
   };
 }
 
-function makeCtx(asset: ContentAsset): ContentGateContext {
+function makeClaimSource(overrides: Partial<ClaimSourceRow> = {}): ClaimSourceRow {
+  return {
+    id: randomUUID(),
+    customer_id: "cust-1",
+    claim_text: "test source claim",
+    claim_kind: "capability",
+    numeric_value: null,
+    numeric_unit: null,
+    numeric_bound: null,
+    source_kind: "customer_attested",
+    source_ref: null,
+    verified_by: "owner@example.com",
+    verified_at: NOW,
+    created_at: NOW,
+    ...overrides,
+  };
+}
+
+function makeCtx(asset: ContentAsset, claimSources: ClaimSourceRow[] = []): ContentGateContext {
   return {
     asset,
     siblings: [],
     brandAliases: ["EMORA"],
-    claimSources: [],
+    claimSources,
   };
 }
 
@@ -323,6 +341,71 @@ describe("verifiableNumbersGate — CJK superlative false positives (W1.7)", () 
     const result = verifiableNumbersGate.apply(makeCtx(koAsset("쉐어조아는 프리미엄 서비스를 제공합니다.")));
     expect(result.action).toBe("block");
     expect(result.reason).toContain("프리미엄");
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Coverage against ctx.claimSources (the customer's verified claim_source
+// registry) directly, independent of asset.claims (which is EMPTY on first
+// generation — claimExtract only runs inside claimVerificationGate, which is
+// skipped once a cheap gate already blocked). See verifiableNumbers.ts's
+// "Cheap coverage against the customer's claim_source registry" section.
+// ---------------------------------------------------------------------------
+
+describe("verifiableNumbersGate — coverage via ctx.claimSources (no LLM needed)", () => {
+  const koAsset = (text: string) =>
+    makeAsset({ language: "ko", body: { content_type: "answer_block", text, length_units: text.length, numeric_claim_ids: [], source_ids: [] }, claims: [] });
+
+  it("passes a bare numeric token whose VALUE matches a verified numeric claim_source", () => {
+    const src = makeClaimSource({
+      claim_text: "운산파트너스는 28년 자동차 정비 노하우를 바탕으로 운영됩니다.",
+      claim_kind: "numeric",
+      numeric_value: "28",
+      numeric_unit: "년",
+    });
+    const result = verifiableNumbersGate.apply(
+      makeCtx(koAsset("운산파트너스는 28년의 정비 경험을 갖추고 있습니다."), [src])
+    );
+    expect(result.action).toBe("pass");
+  });
+
+  it("STILL blocks a bare numeric token with NO matching claim_source value", () => {
+    const src = makeClaimSource({
+      claim_text: "공임비의 5%를 기준으로 정산합니다.",
+      claim_kind: "numeric",
+      numeric_value: "5",
+      numeric_unit: "%",
+    });
+    const result = verifiableNumbersGate.apply(
+      makeCtx(koAsset("운산파트너스는 24시간 접수를 제공합니다."), [src])
+    );
+    expect(result.action).toBe("block");
+    expect(result.reason).toContain("24");
+  });
+
+  it("does NOT count an UNSIGNED claim_source (verified_by null) as coverage", () => {
+    const src = makeClaimSource({
+      claim_kind: "numeric",
+      numeric_value: "28",
+      numeric_unit: "년",
+      verified_by: null,
+      verified_at: null,
+    });
+    const result = verifiableNumbersGate.apply(
+      makeCtx(koAsset("운산파트너스는 28년의 정비 경험을 갖추고 있습니다."), [src])
+    );
+    expect(result.action).toBe("block");
+  });
+
+  it("passes a superlative covered by a verified claim_source's claim_text", () => {
+    const src = makeClaimSource({
+      claim_text: "쉐어조아는 프리미엄 구독을 할인가에 제공하는 정식 등록 사업자입니다.",
+      claim_kind: "capability",
+    });
+    const result = verifiableNumbersGate.apply(
+      makeCtx(koAsset("쉐어조아는 프리미엄 혜택을 제공합니다."), [src])
+    );
+    expect(result.action).toBe("pass");
   });
 });
 
