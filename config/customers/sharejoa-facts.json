@@ -10,12 +10,12 @@
     { "text": "쉐어조아는 유튜브 프리미엄을 정가 14,900원에서 9,900원으로 제공합니다.", "kind": "numeric", "value": 9900, "unit": "원", "bound": "exact" },
     { "text": "쉐어조아의 유튜브 프리미엄 요금은 정가 대비 약 34% 할인된 가격입니다.", "kind": "numeric", "value": 34, "unit": "%", "bound": "exact" },
     { "text": "쉐어조아를 이용하면 연간 약 6만원을 절감할 수 있습니다.", "kind": "numeric", "value": 60000, "unit": "원" },
-    { "text": "쉐어조아는 1개월 단위로 결제하며 자동결제가 없습니다.", "kind": "capability" },
+    { "text": "쉐어조아는 1개월 단위로 결제하며 자동결제가 없습니다.", "kind": "numeric", "value": 1, "unit": "개월", "bound": "exact" },
     { "text": "쉐어조아는 유튜브 뮤직 프리미엄을 포함하여 제공합니다.", "kind": "capability" },
     { "text": "쉐어조아를 통해 광고 없이 유튜브를 시청할 수 있습니다.", "kind": "capability" },
     { "text": "쉐어조아를 통해 백그라운드 재생과 오프라인 저장을 이용할 수 있습니다.", "kind": "capability" },
-    { "text": "쉐어조아를 통해 4K 화질로 유튜브를 시청할 수 있습니다.", "kind": "capability" },
+    { "text": "쉐어조아를 통해 4K 화질로 유튜브를 시청할 수 있습니다.", "kind": "numeric", "value": 4, "unit": "K", "bound": "exact" },
     { "text": "쉐어조아는 사업자등록 및 통신판매업 신고를 마친 사업자입니다.", "kind": "capability" },
-    { "text": "쉐어조아는 3단계 신청 프로세스로 가입할 수 있습니다.", "kind": "capability" }
+    { "text": "쉐어조아는 3단계 신청 프로세스로 가입할 수 있습니다.", "kind": "numeric", "value": 3, "unit": "단계", "bound": "exact" }
   ]
 }
