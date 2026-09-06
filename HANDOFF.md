@@ -2,8 +2,53 @@
 
 _Update this file at the end of every session, then commit + push. See CLAUDE.md for the sync protocol._
 
-**Last updated:** 2026-09-06 (session 4, continued further). Latest commit: `ad43f37`
-(facts.json numeric reclassification) + this handoff commit.
+**Last updated:** 2026-09-06 (session 4, continued further still). Latest commit:
+`05afbd3` (Hangul-multiplier numeral fix) + this handoff commit.
+
+## ✅ SESSION 4 (cont. once more) — repo made PUBLIC (billing), Hangul-multiplier numeral fix, sharejoa's remaining gap identified
+
+**GitHub Actions billing block, resolved by making the repo public.** A `gh workflow
+run` dispatch failed INSTANTLY (~4s, before any step) with "recent account payments
+have failed or your spending limit needs to be increased." Root cause: this repo was
+PRIVATE, so a day of long manual dispatches (`attempts=5` × 3 customers, 1-3h each)
+almost certainly exhausted the account's free Actions-minutes allowance. Couldn't get
+exact usage via `gh api` (needs a `user` OAuth scope requiring interactive browser
+consent). Gave the owner options; **owner chose to make the repo public** (public repos
+get unlimited free Actions minutes). Before flipping visibility, scanned the FULL git
+history + tree for leaked secrets (Gemini/GitHub token patterns, embedded DB passwords)
+— found none (`.env` was never committed, matches the encrypted-env-sync design).
+Repo is now public; confirmed a dispatch right after started running normally.
+
+**Fixed the remaining Korean numeral gap: digit + Hangul multiplier (6만원, 7천만원).**
+`scanBodyForNumerics`'s CJK_NUMERAL_REGEX matches CJK ideographs (一二三...万億), NOT
+Hangul syllables (만/억/천/백 written in 한글) — so "6만원" was only ever detected as
+bare "6", which could never match a claim_source's numeric_value=60000. Fixed in
+`isNumericCoveredBySource` (verifiableNumbers.ts): peeks at the text immediately after
+a digit hit for a Hangul multiplier suffix (만/억/천/백, plus compounds 천만/백만,
+longest-first) and multiplies before comparing. This is the exact gap documented in
+`reference-korean-claim-binding.md` ("7천만 partial detection") — now closed, and it
+helps every Korean-pricing customer, not just sharejoa. Also added a missing
+"14,900원" (list price) fact for sharejoa — only the discounted 9,900원 had been
+recorded. 2476 tests pass (3 new) + tsc clean.
+
+**sharejoa's numeric/premium gate-blocking is now FULLY resolved** (re-verified live:
+only ONE `verifiableNumbersGate` block remained, "최대" — a genuine unbounded
+superlative with no source, correctly blocked). Still 0 passed pages, but for a
+DIFFERENT reason now: **LLM generation-quality issues**, not gate bugs —
+`keywordStuffingGate` (한 단어가 24~33% 반복되는 부자연스러운 텍스트, e.g. "정보"/"없음"),
+`selfContainednessGate` (lead doesn't name the brand), `claimVerificationGate`
+extraction failures → needs_human. This is prompt/generation-quality tuning for the
+`subscription-sharing` industry brief — a different, larger scope of work than
+today's gate-correctness fixes. Don't re-chase the numeric/premium gate class here;
+it's closed.
+
+### ON REOPEN
+- Confirm the repo is still public and Actions runs are not billing-blocked.
+- sharejoa: if still 0 passed pages after several more weekly cycles, the next lever
+  is generation prompt quality (why Gemini produces keyword-stuffed text / weak leads
+  for this specific brief), not the gates.
+- Everything else from earlier in session 4 (Neon migration, unsanpartners/emora live,
+  smim dormant, Gemini multi-key rotation) is steady-state — see the sections below.
 
 ## ✅ SESSION 4 (cont. further) — root-caused + fixed the real gate-blocking bug, publish volume up
 Owner asked to increase publish volume and pushed back on "sharejoa/unsanpartners have 0

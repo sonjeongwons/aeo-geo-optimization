@@ -5,7 +5,7 @@ metadata:
   node_type: memory
   type: project
   originSessionId: b289ea83-61ef-4d5d-9831-12cbbdc22c47
-  modified: 2026-09-06T07:21:21.748Z
+  modified: 2026-09-06T21:38:57.431Z
 ---
 
 Owner directed onboarding of **sharejoa.kr** (쉐어조아 — a YouTube Premium
@@ -40,16 +40,37 @@ fixed 2026-09-06. Also found+fixed my own data-entry mistake: 5 facts (24시간/
 센터/1개월/4K/3단계) were tagged `kind:"capability"` instead of `"numeric"`, so they
 had no numeric_value to match against even after the gate fix.
 
-**Still 0 live pages as of the last check** — but NOT the gate bug anymore (verified:
-a local `gen-content` run for sharejoa generates fine and reaches gating with a normal
-result shape, same as unsanpartners/emora). The one CI publish run dispatched right
-after the facts fix landed produced zero generation attempts for sharejoa specifically
-(0 llm_call rows) while emora's run immediately after it succeeded with the same keys
-— looks like a one-off transient blip, not a reproducible bug. GitHub Pages is NOT yet
-enabled for this hub (needs a `main` branch, which needs ≥1 passed page ever).
+**2026-09-06 later same day: also fixed the digit+Hangul-multiplier numeral gap**
+("6만원", "7천만원" — scanBodyForNumerics only ever detected the bare digit "6",
+never multiplied by the Hangul 만/억/천/백 suffix, so it could never match a
+claim_source's numeric_value=60000). Also added a missing fact for the 14,900원
+LIST price (only the discounted 9,900원 had been recorded). See
+[[reference-verifiable-numbers-gate-fix]] for the full technical detail — this fix
+benefits every Korean-pricing customer, not just sharejoa.
 
-How to apply: when resuming, check whether a subsequent publish.yml cycle (scheduled
-or dispatched) got ANY page through for sharejoa. If it keeps coming back with 0
-generation attempts (not 0-passed-after-gating, but literally 0 attempts) across
-multiple separate cycles, THAT would be worth investigating as a real bug — but a
-single occurrence isn't enough signal yet.
+**Confirmed: the earlier "0 generation attempts" run WAS just a transient blip** —
+turned out to be caused by a SEPARATE issue: the GitHub account's Actions billing
+failed that same window (private-repo Actions minutes exhausted from a day of long
+manual dispatches), which made `gh workflow run` fail INSTANTLY with a billing error
+for one dispatch. Owner had Claude flip the repo to public (public repos get
+unlimited free Actions minutes) to unblock this permanently — see
+[[project-neon-migration]] sibling note or `HANDOFF.md` session 4 for the billing
+incident. Not a sharejoa-specific problem.
+
+**Current status (after the numeral fix, re-verified live):** `verifiableNumbersGate`
+now shows only ONE legitimate block ("최대" — a genuine unbounded superlative with no
+source, correctly blocked) — the numeric/premium bug class is FULLY resolved for this
+customer. Still 0 PASSED pages, but for a DIFFERENT, unrelated reason now:
+LLM-generation-quality gates are catching real issues — `keywordStuffingGate` (한 단어가
+24~33% 반복되는 부자연스러운 텍스트, e.g. "정보"/"없음" repeated), `selfContainednessGate`
+(lead doesn't name the brand), and `claimVerificationGate` extraction failures
+routing to needs_human. These are prompt/generation-quality problems, not gate
+correctness bugs — a different, larger scope of work (tuning the subscription-sharing
+industry brief/prompt) than what was fixed today. GitHub Pages still NOT enabled
+(needs ≥1 ever-passed page).
+
+How to apply: don't re-chase the numeric/premium gate class for sharejoa — that's
+closed. If sharejoa is still stuck at 0 pages after several more weekly cycles,
+the next thing to look at is generation prompt quality (why does Gemini produce
+keyword-stuffed text for THIS brief specifically, and why doesn't the lead name the
+brand) — that's prompt engineering, not a gate bug.

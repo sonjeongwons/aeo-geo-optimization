@@ -13,3 +13,4 @@
 - [Project: unsanpartners onboarding](project-unsanpartners-onboarding.md) — 3rd customer (운산파트너스) — ✅ completed, live
 - [Project: sharejoa onboarding](project-sharejoa-onboarding.md) — 4th customer (쉐어조아) — onboarded, gate bug fixed, still 0 live pages (transient?)
 - [Reference: Gemini multi-key rotation](reference-gemini-multikey.md) — GEMINI_API_KEYS round-robin + key-format lesson + model-deprecation fix
+- [Project: GitHub Actions billing](project-github-actions-billing.md) — repo made PUBLIC 2026-09-06 to fix an Actions-minutes billing block
