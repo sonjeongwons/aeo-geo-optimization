@@ -44,8 +44,20 @@ import type { QgenRunBudget } from "../cost/qgenBudget.js";
 // Constants
 // ---------------------------------------------------------------------------
 
-/** Default model for claim extraction (same flash model as content generation). */
-const DEFAULT_EXTRACT_MODEL = "gemini-2.5-flash";
+/**
+ * Default model for claim extraction. Deliberately DIFFERENT from the
+ * gemini-2.5-flash model content generation uses: Google tracks free-tier
+ * daily quota PER MODEL PER PROJECT (GenerateRequestsPerDayPerProjectPerModel
+ * — observed limit 20/day on gemini-2.5-flash), so sharing one model between
+ * generation and extraction meant a busy generation day silently zeroed out
+ * extraction capacity too, and claimVerify.ts's fail-closed backstop then
+ * routed nearly everything to needs_human with "Extraction failed". Using a
+ * separate model gives extraction its own independent daily quota bucket.
+ * Structured span/claim extraction doesn't need flash's extra capability —
+ * the fail-closed backstop already covers any accuracy gap by routing
+ * uncertain output to needs_human rather than passing it.
+ */
+const DEFAULT_EXTRACT_MODEL = "gemini-flash-lite-latest";
 
 /** Extraction temperature — 0 for deterministic extraction. */
 const EXTRACT_TEMPERATURE = 0;
