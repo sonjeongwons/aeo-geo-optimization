@@ -366,6 +366,29 @@ function findMatchingSource(
   claim: ClaimRecord,
   sources: ClaimSourceRow[]
 ): ClaimSourceRow | null {
+  // Prefer SIGNED sources (verified_by !== null) outright: genContent.ts's
+  // seedClaimSourcesFromBrief auto-creates unsigned duplicate rows from
+  // brief.productAttributes (awaiting human review) alongside any properly
+  // ingested+signed facts covering the SAME fact in different wording (e.g.
+  // the brief's terse "4K 화질 지원" vs a signed fact's full sentence). Plain
+  // lexical scoring can pick the unsigned duplicate over the signed original
+  // when the generated text happens to mirror the terser phrasing more
+  // closely — that permanently blocks a claim a signed source already
+  // covers. Search signed sources FIRST; only fall back to unsigned ones if
+  // no signed source matches at all, so a pending-review duplicate never
+  // outscores an already-verified fact.
+  const signed = sources.filter((s) => s.verified_by !== null);
+  if (signed.length > 0) {
+    const signedMatch = findMatchingSourceAmong(claim, signed);
+    if (signedMatch !== null) return signedMatch;
+  }
+  return findMatchingSourceAmong(claim, sources);
+}
+
+function findMatchingSourceAmong(
+  claim: ClaimRecord,
+  sources: ClaimSourceRow[]
+): ClaimSourceRow | null {
   const claimNorm = claim.claim_text.toLowerCase().trim();
   const claimWords = tokenize(claimNorm);
 

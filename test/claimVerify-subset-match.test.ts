@@ -123,6 +123,57 @@ describe("claimVerify claim⊆source matching (§7-safe recall)", () => {
     expect(result.claims[0]?.resolved_source_id).toBe(src.id);
   });
 
+  it("prefers a SIGNED source over an UNSIGNED duplicate on an exact-match tie", () => {
+    // Mirrors the real sharejoa bug: seedClaimSourcesFromBrief auto-creates an
+    // UNSIGNED duplicate (customer_attested, verified_by=null) from a brief
+    // attribute, alongside a properly ingested+signed fact covering the exact
+    // same claim text. Plain lexical scoring ties (both exact-match, score 3);
+    // without a signed-first preference, iteration/sort order could pick
+    // either — including the unsigned one, which then permanently blocks the
+    // claim ("not yet signed off") even though a verified equivalent exists.
+    const unsignedDuplicate: ClaimSourceRow = {
+      ...source("4K 화질 지원", "capability"),
+      id: "44444444-4444-4444-4444-444444444444",
+      source_kind: "customer_attested",
+      verified_by: null,
+      verified_at: null,
+    };
+    const signed: ClaimSourceRow = {
+      ...source("4K 화질 지원", "capability"),
+      id: "55555555-5555-5555-5555-555555555555",
+      source_kind: "customer_attested",
+    };
+    const text = "4K 화질 지원";
+    const result = verifyAndDecide({
+      body: body(text),
+      language: "ko",
+      claims: [capabilityClaim(text)],
+      sources: [unsignedDuplicate, signed],
+    });
+    expect(result.claims[0]?.resolved_source_id).toBe(signed.id);
+    expect(result.decision).toBe("pass");
+  });
+
+  it("falls back to an UNSIGNED source when no signed source matches (existing needs_human path unchanged)", () => {
+    const unsigned: ClaimSourceRow = {
+      ...source("4K 화질 지원", "capability"),
+      source_kind: "customer_attested",
+      verified_by: null,
+      verified_at: null,
+    };
+    const text = "4K 화질 지원";
+    const result = verifyAndDecide({
+      body: body(text),
+      language: "ko",
+      claims: [capabilityClaim(text)],
+      sources: [unsigned],
+    });
+    // Resolves to the unsigned source (so the "not yet signed off" reason can
+    // surface) but does NOT pass — an unsigned source is not yet trustworthy.
+    expect(result.claims[0]?.resolved_source_id).toBe(unsigned.id);
+    expect(result.decision).not.toBe("pass");
+  });
+
   it("a short claim (<4 significant words) sharing NON-contiguous words does NOT loose-match", () => {
     const src = source("EMORA offers a creator economy for monetizing AI characters and content");
     // 3 significant words, all present in the source but NOT a contiguous substring
