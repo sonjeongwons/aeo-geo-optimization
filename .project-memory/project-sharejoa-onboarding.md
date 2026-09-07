@@ -5,7 +5,7 @@ metadata:
   node_type: memory
   type: project
   originSessionId: b289ea83-61ef-4d5d-9831-12cbbdc22c47
-  modified: 2026-09-07T00:04:51.449Z
+  modified: 2026-09-07T16:49:47.250Z
 ---
 
 Owner directed onboarding of **sharejoa.kr** (쉐어조아 — a YouTube Premium
@@ -93,13 +93,43 @@ this fix landed, BOTH keys' `gemini-2.5-flash` daily quota (used for generation
 itself) was already exhausted for the day too, so a final same-day verification
 dispatch produced 0 generation attempts — expected, not a new bug.
 
+**2026-09-07 (next day, quota reset) — fix #6: signed-source preference (commit
+`1cfef92`), then hit the real remaining limit.** `genContent.ts`'s
+`seedClaimSourcesFromBrief` auto-creates UNSIGNED claim_source rows (verified_by
+=null) from `brief.productAttributes` on every run, duplicating facts already
+properly ingested+SIGNED via `*-facts.json`. `findMatchingSource` had no
+signed-vs-unsigned preference, so a claim could bind to the unsigned duplicate
+("not yet signed off") even when a signed equivalent existed. Fixed: search signed
+sources first, fall back to unsigned only if no signed source matches at all (see
+[[reference-verifiable-numbers-gate-fix]] update). **Verified this genuinely helps
+in some cases, but sharejoa STILL hasn't passed** — the deeper reason: the signed
+facts are precise ATOMIC single-number rows (9900원, 14900원, 34%, 60000원, each
+separately), but Gemini's generated prose often mentions MULTIPLE numbers in one
+sentence/claim. The unit-compatibility precondition in `findMatchingSourceAmong`
+correctly filters out every atomic signed source for a multi-number claim (none
+matches on canonical unit), while the untyped unsigned duplicate (numeric_value=
+null, so exempt from that filter) still lexically matches via plain text overlap —
+so the "prefer signed" fix does nothing when NO signed source can match under the
+numeric-unit-compatibility rule at all.
+
+**This is no longer a discrete bug — it's the long-standing, open-ended
+claim-matching PRECISION/RECALL limitation** already documented in
+[[reference-korean-claim-binding]] months ago ("owned_net pass yield is still low
+~1-2/set... steady weekly accumulation, not bulk" — true for smim too, not unique
+to sharejoa). Six real, independently-verified fixes shipped this session (numeral
+binding, 유튜브프리미엄 exception, prompt BLUF, comparison-table filler cap,
+extraction-model quota split, signed-source preference) — each measurably reduced
+hard blocks and shifted failures toward more nuanced needs_human reasons. What's
+left is a genuine NLP-matching quality project (e.g., splitting extracted claims
+per-number, or loosening/restructuring the unit-compatibility gate for
+multi-number sentences), not a quick fix — decided NOT to keep chasing it
+same-session given diminishing returns and quota cost.
+
 GitHub Pages still NOT enabled for this hub (needs ≥1 ever-passed page).
 
-How to apply: don't re-chase the numeric/premium or keyword-stuffing/self-
-containedness gate classes for sharejoa — both closed and verified. When resuming
-(after the daily quota resets), dispatch `gh workflow run publish.yml -f
-customer=sharejoa` fresh — with all four fixes now in place (numeral binding,
-프리미엄 exception, prompt BLUF + comparison cap, separate extraction model) this
-SHOULD produce sharejoa's first passed page. If it still doesn't, that would be a
-genuinely new, worth-investigating signal — check the actual current gate_report
-reasons rather than assuming it's one of the four already-fixed classes.
+How to apply: don't re-chase ANY of the six fixed classes for sharejoa — all
+closed and verified individually. Expect sharejoa's pass rate to accumulate
+gradually over multiple weekly cycles (like smim's history), not resolve in one
+sitting. If someone wants to meaningfully move this forward later, the next real
+lever is the claim-extraction/matching precision problem described above — that's
+a bigger, more open-ended piece of work, distinct from anything fixed today.

@@ -5,7 +5,7 @@ metadata:
   node_type: memory
   type: reference
   originSessionId: b289ea83-61ef-4d5d-9831-12cbbdc22c47
-  modified: 2026-09-06T07:21:44.517Z
+  modified: 2026-09-07T16:50:15.561Z
 ---
 
 Found while investigating why unsanpartners/sharejoa had almost no §7-passed content
@@ -65,3 +65,18 @@ NOT fix already-ingested rows — the DB rows need a direct UPDATE too.
 **Verified impact same day:** unsanpartners hub 2→4 live pages, emora hub 22→24,
 gate reports showing `blocked` counts dropping sharply in favor of `needs_human`/
 `passed`. 2473 tests pass (7 new, in `test/verifiableNumbers.test.ts`) + tsc clean.
+
+**2026-09-07 follow-on — signed-vs-unsigned source preference (commit `1cfef92`):**
+a SIXTH, related bug found the next day. `genContent.ts`'s `seedClaimSourcesFromBrief`
+auto-creates UNSIGNED claim_source rows from `brief.productAttributes` on every run,
+duplicating facts already properly signed via `*-facts.json`. `findMatchingSource`
+(claimVerify.ts) had no preference between signed/unsigned candidates, so a claim
+could bind to the unsigned duplicate ("not yet signed off") even when a signed
+equivalent existed. Fixed: search signed sources first, fall back to unsigned only
+if nothing signed matches. This helps, but does NOT fully resolve sharejoa's
+0-passed-pages — see [[project-sharejoa-onboarding]]'s 2026-09-07 entry: the deeper
+issue is that ATOMIC signed facts (one number each) don't unit-match a generated
+CLAIM that mentions multiple numbers in one sentence, while the untyped (numeric_
+value=null) unsigned duplicate slips past the unit-compatibility filter and matches
+on plain text instead. That's an open-ended claim-matching precision problem, not a
+quick fix — logged as a known limitation, not chased further this session.

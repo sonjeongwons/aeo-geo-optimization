@@ -2,8 +2,51 @@
 
 _Update this file at the end of every session, then commit + push. See CLAUDE.md for the sync protocol._
 
-**Last updated:** 2026-09-07 (session 4, final round). Latest commit: `4809c3f`
-(claim-extraction model separated from generation model) + this handoff commit.
+**Last updated:** 2026-09-07 (session 4, truly final round). Latest commit:
+`1cfef92` (signed-source-preference fix) + this handoff commit.
+
+## ✅ SESSION 4 (truly final) — 6th sharejoa fix, then hit the real open-ended limit
+
+After the daily quota reset, re-verified sharejoa and found a 6th real bug:
+`genContent.ts`'s `seedClaimSourcesFromBrief` auto-creates UNSIGNED claim_source
+duplicates from `brief.productAttributes` on every run, alongside the properly
+SIGNED facts from `*-facts.json`. `findMatchingSource` had no signed-vs-unsigned
+preference, so claims sometimes bound to the unsigned duplicate ("not yet signed
+off") instead of an available signed equivalent. Fixed (commit `1cfef92`): search
+signed sources first, fall back to unsigned only if nothing signed matches. 2478
+tests pass (2 new) + tsc clean.
+
+**This helped, but sharejoa still hasn't passed a page.** The deeper reason,
+confirmed via live gate_report inspection: signed facts are precise ATOMIC
+single-number rows (9900원, 14900원, 34%, 60000원, each separate), but Gemini's
+generated prose often mentions multiple numbers in one sentence/claim. The
+unit-compatibility precondition in `findMatchingSourceAmong` correctly filters out
+every atomic signed source for a multi-number claim (none matches on canonical
+unit alone), while the untyped (numeric_value=null) unsigned duplicate slips past
+that filter and matches on plain text overlap instead.
+
+**Decision: stop chasing this tonight.** This is no longer a discrete bug — it's
+the long-standing, open-ended claim-matching precision/recall limitation already
+documented in `reference-korean-claim-binding.md` months ago (smim's own yield was
+always "~1-2/set, steady weekly accumulation, not bulk"). Six real,
+independently-verified fixes shipped this session total (numeral binding, 유튜브
+프리미엄 exception, prompt BLUF, comparison-table filler cap, extraction-model
+quota split, signed-source preference) — each measurably reduced hard blocks and
+shifted failures toward more nuanced needs_human reasons. What's left (e.g.
+splitting extracted claims per-number, or restructuring the unit-compatibility
+gate for multi-number sentences) is a genuine NLP-matching quality project, not a
+quick fix.
+
+### ON REOPEN
+- Do NOT re-chase any of the six fixed classes for sharejoa — all closed,
+  individually verified live.
+- Expect sharejoa's pass rate to accumulate gradually over multiple weekly cycles
+  (like smim's history), not resolve in one sitting.
+- If someone wants to meaningfully move this forward later, the real next lever is
+  the claim-extraction/matching precision problem above — a bigger, more
+  open-ended piece of work than anything fixed today. See
+  [[reference-verifiable-numbers-gate-fix]] / `project-sharejoa-onboarding.md` for
+  full detail.
 
 ## ✅ SESSION 4 (final round) — content-quality prompt fixes + the real quota ceiling discovered
 
