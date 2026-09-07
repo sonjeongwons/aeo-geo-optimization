@@ -5,7 +5,7 @@ metadata:
   node_type: memory
   type: project
   originSessionId: b289ea83-61ef-4d5d-9831-12cbbdc22c47
-  modified: 2026-09-06T21:38:57.431Z
+  modified: 2026-09-07T00:04:51.449Z
 ---
 
 Owner directed onboarding of **sharejoa.kr** (쉐어조아 — a YouTube Premium
@@ -60,17 +60,46 @@ incident. Not a sharejoa-specific problem.
 **Current status (after the numeral fix, re-verified live):** `verifiableNumbersGate`
 now shows only ONE legitimate block ("최대" — a genuine unbounded superlative with no
 source, correctly blocked) — the numeric/premium bug class is FULLY resolved for this
-customer. Still 0 PASSED pages, but for a DIFFERENT, unrelated reason now:
-LLM-generation-quality gates are catching real issues — `keywordStuffingGate` (한 단어가
-24~33% 반복되는 부자연스러운 텍스트, e.g. "정보"/"없음" repeated), `selfContainednessGate`
-(lead doesn't name the brand), and `claimVerificationGate` extraction failures
-routing to needs_human. These are prompt/generation-quality problems, not gate
-correctness bugs — a different, larger scope of work (tuning the subscription-sharing
-industry brief/prompt) than what was fixed today. GitHub Pages still NOT enabled
-(needs ≥1 ever-passed page).
+customer.
 
-How to apply: don't re-chase the numeric/premium gate class for sharejoa — that's
-closed. If sharejoa is still stuck at 0 pages after several more weekly cycles,
-the next thing to look at is generation prompt quality (why does Gemini produce
-keyword-stuffed text for THIS brief specifically, and why doesn't the lead name the
-brand) — that's prompt engineering, not a gate bug.
+**2026-09-06, same day, round 3 — content-quality prompt fixes (see
+[[reference-prompt-quality-fixes]] for full technical detail):**
+1. Fixed the generic prompt-template gap: `definition_sentence`/`case_study` formats
+   never told Gemini to lead with the brand name (only `answer_block` had that rule),
+   so `selfContainednessGate` failed on those two formats for every customer, not just
+   sharejoa. Added the same BLUF instruction.
+2. Fixed `keywordStuffingGate`: sharejoa has 15 seedCompetitors + zero ingested
+   comparative facts, so the "no facts" prompt branch forced literal "정보 없음" for
+   every competitor cell — enough repetition (up to 8 competitors × several columns)
+   to trip the gate. unsanpartners hits the same branch but only has 3 competitors,
+   under the threshold. Capped placeholder rows to 3 max and told the model to OMIT
+   competitors it can't say anything about rather than repeat the same filler phrase.
+   Verified live: keywordStuffingGate and selfContainednessGate stopped firing
+   entirely for sharejoa after this fix — confirmed clean in the next real batch.
+
+**The actual remaining/final blocker, found after the above: Google's free-tier
+daily quota is 20 requests/day PER MODEL PER PROJECT** (not per-minute — a much
+harder ceiling than expected). Content generation and claim extraction
+(`claimExtract.ts`) both defaulted to `gemini-2.5-flash`, so a day of heavy testing
+across 4 customers exhausted BOTH keys' 20/day allowance for that one model,
+making `claimVerificationGate`'s extraction step fail almost 100% of the time
+("Extraction failed and backstop detected N unverified spans — fail closed") — this
+looked like a sharejoa-specific content problem but was actually quota exhaustion
+from the SAME day's testing volume, confirmed via a local repro showing the literal
+429 `GenerateRequestsPerDayPerProjectPerModel-FreeTier` error. Fixed: moved claim
+extraction to `gemini-flash-lite-latest` (a different model = a separate quota
+bucket) — see [[reference-gemini-multikey]] for the model-id history. By the time
+this fix landed, BOTH keys' `gemini-2.5-flash` daily quota (used for generation
+itself) was already exhausted for the day too, so a final same-day verification
+dispatch produced 0 generation attempts — expected, not a new bug.
+
+GitHub Pages still NOT enabled for this hub (needs ≥1 ever-passed page).
+
+How to apply: don't re-chase the numeric/premium or keyword-stuffing/self-
+containedness gate classes for sharejoa — both closed and verified. When resuming
+(after the daily quota resets), dispatch `gh workflow run publish.yml -f
+customer=sharejoa` fresh — with all four fixes now in place (numeral binding,
+프리미엄 exception, prompt BLUF + comparison cap, separate extraction model) this
+SHOULD produce sharejoa's first passed page. If it still doesn't, that would be a
+genuinely new, worth-investigating signal — check the actual current gate_report
+reasons rather than assuming it's one of the four already-fixed classes.

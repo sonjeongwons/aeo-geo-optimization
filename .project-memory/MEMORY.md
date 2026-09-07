@@ -11,6 +11,7 @@
 - [Prod Neon ids](reference-prod-timescale-ids.md) — live emora/unsanpartners/sharejoa ids on Neon (Timescale DB deleted 2026-09-05); localhost≠prod trap
 - [Project: Neon migration](project-neon-migration.md) — why/how DB moved off TimescaleDB Cloud to Neon, verified end-to-end
 - [Project: unsanpartners onboarding](project-unsanpartners-onboarding.md) — 3rd customer (운산파트너스) — ✅ completed, live
-- [Project: sharejoa onboarding](project-sharejoa-onboarding.md) — 4th customer (쉐어조아) — onboarded, gate bug fixed, still 0 live pages (transient?)
-- [Reference: Gemini multi-key rotation](reference-gemini-multikey.md) — GEMINI_API_KEYS round-robin + key-format lesson + model-deprecation fix
+- [Project: sharejoa onboarding](project-sharejoa-onboarding.md) — 4th customer (쉐어조아) — all known gate/prompt bugs fixed, blocked on today's exhausted daily Gemini quota
+- [Reference: prompt quality fixes](reference-prompt-quality-fixes.md) — missing brand-lead BLUF (generic gap), comparison-table filler cap, and the 20/day/model/project quota discovery
+- [Reference: Gemini multi-key rotation](reference-gemini-multikey.md) — GEMINI_API_KEYS round-robin + key-format lesson + model-deprecation fix + per-model daily quota
 - [Project: GitHub Actions billing](project-github-actions-billing.md) — repo made PUBLIC 2026-09-06 to fix an Actions-minutes billing block

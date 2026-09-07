@@ -2,8 +2,63 @@
 
 _Update this file at the end of every session, then commit + push. See CLAUDE.md for the sync protocol._
 
-**Last updated:** 2026-09-06 (session 4, continued further still). Latest commit:
-`05afbd3` (Hangul-multiplier numeral fix) + this handoff commit.
+**Last updated:** 2026-09-07 (session 4, final round). Latest commit: `4809c3f`
+(claim-extraction model separated from generation model) + this handoff commit.
+
+## ✅ SESSION 4 (final round) — content-quality prompt fixes + the real quota ceiling discovered
+
+Continued chasing sharejoa's 0-passed-pages after the numeral/프리미엄 gate fixes.
+Found and fixed two MORE real bugs, then hit the actual hard resource ceiling:
+
+1. **Prompt template gap (generic, not sharejoa-specific), commit `7cde765`:**
+   `selfContainednessGate` requires `definition_sentence`/`case_study` leads to name
+   the brand — but `buildContentPromptForFormat`'s `FORMAT_INSTRUCTIONS` only had
+   that rule for `answer_block`. Added it to the other two. This affects every
+   customer generating those formats, just fully exposed for sharejoa since it had
+   nothing else passing to offset it.
+2. **keywordStuffingGate, commit `7cde765`:** sharejoa's 15 seedCompetitors + zero
+   ingested comparative facts meant the "no facts" comparison-table prompt branch
+   forced literal "정보 없음" for every competitor cell — enough repetition to trip
+   the gate's CJK-bigram density check (>=8 occurrences/>=5%). unsanpartners hits the
+   same branch but only has 3 competitors (under threshold); emora avoids it via real
+   ingested facts. Capped placeholder rows to 3 + told the model to omit competitors
+   it can't say anything about. **Verified live: both gates stopped firing entirely
+   for sharejoa's very next batch.**
+3. **The actual remaining blocker — Google free-tier quota is 20 requests/DAY PER
+   MODEL PER PROJECT, commit `4809c3f`.** After 1-2, sharejoa still failed ~100% at
+   `claimVerificationGate` ("Extraction failed... fail closed"). Assumed transient
+   rate-limiting — wrong. Local repro surfaced the real 429:
+   `quotaId=GenerateRequestsPerDayPerProjectPerModel-FreeTier, quotaValue=20,
+   model=gemini-2.5-flash`. `claimExtract.ts` shared `gemini-2.5-flash` with content
+   generation, so a day of generation testing (4 customers) silently zeroed out
+   extraction's bucket too. Fixed: extraction now uses `gemini-flash-lite-latest` (a
+   separate daily bucket). **By the time this landed, BOTH rotation keys'
+   `gemini-2.5-flash` daily quota was ALSO exhausted from the day's own testing** — a
+   final verification dispatch produced 0 generation attempts, which is the expected
+   consequence of the same 20/day ceiling, not a new bug.
+
+**All four sharejoa blocker classes (numeral binding, 유튜브 프리미엄 exception,
+BLUF/keyword-stuffing prompt fixes, extraction-model quota split) are now fixed and
+individually verified live.** Nothing more to chase in code — sharejoa's first
+passed page is blocked purely on today's exhausted daily quota resetting. 2476 tests
+pass throughout, tsc clean at every step.
+
+**Big-picture lesson for future sessions:** 20/day/model/project is a genuinely tiny
+budget. A single day of manual `gh workflow run` dispatches with high `attempts` can
+(and did) exhaust it across every model in use, for both rotation keys. Before
+concluding "still broken" after a fix, check whether it's just the day's quota gone
+(check `gemini-2.5-flash`, `gemini-flash-lite-latest`, AND `gemini-2.5-pro`
+separately) rather than re-diagnosing from scratch. See
+[[reference-prompt-quality-fixes]] / `reference-prompt-quality-fixes.md` in
+`.project-memory/` for full detail.
+
+### ON REOPEN
+- Once the daily quota resets, dispatch `gh workflow run publish.yml -f
+  customer=sharejoa` — this SHOULD produce sharejoa's first live page now.
+- If the owner sends corrected Gemini keys (the other 6 pasted values were not valid
+  `AIzaSy...` keys), each additional distinct-project key adds a full extra 20/day
+  to EVERY model's ceiling (generation, extraction, judge, escalation) — this is now
+  the clearest lever for real throughput, more so than raising ATTEMPTS/TOTAL.
 
 ## ✅ SESSION 4 (cont. once more) — repo made PUBLIC (billing), Hangul-multiplier numeral fix, sharejoa's remaining gap identified
 

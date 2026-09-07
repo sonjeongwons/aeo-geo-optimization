@@ -5,7 +5,7 @@ metadata:
   node_type: memory
   type: reference
   originSessionId: b289ea83-61ef-4d5d-9831-12cbbdc22c47
-  modified: 2026-09-05T16:34:19.812Z
+  modified: 2026-09-07T00:05:34.867Z
 ---
 
 Added 2026-09-06 because the owner has multiple Gemini API keys from separate
@@ -47,6 +47,20 @@ doesn't pass an explicit `preferredJudgeModelId` (confirmed the real call site,
 loadTemplate.ts's DB model seed) instead of a pinned dated id — avoids repeating
 this exact failure mode when Google eventually deprecates whatever the current
 "latest" resolves to. `gemini-2.5-flash` and `gemini-flash-latest` were confirmed
-working on the new key; `gemini-flash-lite-latest` itself was NOT live-tested (ran
-out of free-tier quota mid-investigation) — worth checking the next real
-measure.yml/publish.yml run for judge errors on that specific id.
+working on the new key; `gemini-flash-lite-latest` was later confirmed working too
+(now also used by `claimExtract.ts`, see below).
+
+**Second, bigger discovery (same day, later): free-tier quota is 20 requests/DAY
+PER MODEL PER PROJECT**, not a per-minute RPM limit as originally assumed — see
+[[reference-prompt-quality-fixes]] for the full incident. `claimExtract.ts` shared
+`gemini-2.5-flash` with content generation, so a day of generation testing quietly
+exhausted extraction's quota bucket too. Fixed by moving extraction to
+`gemini-flash-lite-latest` (commit `4809c3f`) — a different model = an independent
+daily bucket. **Practical consequence: this repo now spans 3 Gemini models in
+active use** (`gemini-2.5-flash` for generation/diagnose, `gemini-flash-lite-latest`
+for judge + claim extraction, `gemini-2.5-pro` for judge escalation only) — each
+with its OWN 20/day/project ceiling, so real daily throughput is roughly
+`(number of distinct-project keys) × 20` per model, not a single shared pool. This
+is the strongest argument for getting the other 6 pasted values re-verified as real
+`AIzaSy...` keys — each additional distinct-project key adds a full extra 20/day to
+EVERY model's ceiling, not just one shared bucket.
